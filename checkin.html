@@ -290,6 +290,66 @@
   .main { padding-bottom: 40px; }
   .fade-in { animation: fadeIn 0.4s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* 問卷區塊 */
+  .survey-section {
+    margin: 20px 20px 0;
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    display: none;
+  }
+  .survey-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .survey-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .survey-btn {
+    border: 2.5px solid #e8e8e8;
+    border-radius: 14px;
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    background: white;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    transition: all 0.2s;
+  }
+  .survey-btn.selected-yes {
+    border-color: var(--green);
+    background: var(--green-light);
+    color: var(--green);
+  }
+  .survey-btn.selected-no {
+    border-color: var(--red);
+    background: var(--red-light);
+    color: var(--red);
+  }
+  .submit-btn {
+    margin-top: 16px;
+    width: 100%;
+    background: var(--green);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    padding: 18px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: none;
+  }
+  .submit-btn:active { transform: scale(0.97); }
 </style>
 </head>
 <body>
@@ -354,6 +414,25 @@
       <span class="punch-btn-icon">🏠</span>
       下班打卡
     </button>
+  </div>
+
+  <!-- 下班問卷 -->
+  <div class="survey-section fade-in" id="surveySection">
+    <div id="lunchQuestion" style="display:none">
+      <div class="survey-title">🍱 今日有無午餐？</div>
+      <div class="survey-buttons">
+        <button class="survey-btn" id="lunchYes" onclick="selectSurvey('lunch', true)">✅ 有用餐<br><small style="color:var(--gray)">扣70元</small></button>
+        <button class="survey-btn" id="lunchNo" onclick="selectSurvey('lunch', false)">❌ 無用餐<br><small style="color:var(--gray)">不扣</small></button>
+      </div>
+    </div>
+    <div id="restQuestion" style="display:none; margin-top:16px">
+      <div class="survey-title">☕ 加班有無休息？</div>
+      <div class="survey-buttons">
+        <button class="survey-btn" id="restYes" onclick="selectSurvey('rest', true)">✅ 有休息<br><small style="color:var(--gray)">扣30分鐘</small></button>
+        <button class="survey-btn" id="restNo" onclick="selectSurvey('rest', false)">❌ 無休息<br><small style="color:var(--gray)">全額計算</small></button>
+      </div>
+    </div>
+    <button class="submit-btn" id="submitBtn" onclick="submitSurvey()">確認送出</button>
   </div>
 
   <!-- Today Record -->
@@ -535,6 +614,10 @@ function updateButtons() {
 // ============================================================
 // 打卡
 // ============================================================
+let pendingClockOut = null; // 暫存下班打卡資料等問卷完成
+let surveyAnswers = { lunch: null, rest: null };
+let hasOvertime = false;
+
 async function punch(type) {
   if (!inRange) {
     showToast('⚠️ 不在打卡範圍內', 'error');
@@ -546,39 +629,161 @@ async function punch(type) {
   btnIn.disabled = true;
   btnOut.disabled = true;
 
-  showToast('打卡中...', '');
+  if (type === '上班') {
+    showToast('打卡中...', '');
+    try {
+      const payload = {
+        action: 'liff_punch',
+        userId: userId,
+        userName: userName,
+        shift: selectedShift,
+        type: '上班',
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        distance: Math.round(distance)
+      };
+      const res  = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ 上班打卡成功！', 'success');
+        loadTodayRecord();
+      } else {
+        showToast('❌ ' + (data.error || '打卡失敗'), 'error');
+        updateButtons();
+      }
+    } catch(err) {
+      showToast('❌ 網路錯誤，請重試', 'error');
+      updateButtons();
+    }
+
+  } else {
+    // 下班打卡 → 先暫存，顯示問卷
+    const now = new Date();
+    pendingClockOut = {
+      userId, userName,
+      shift: selectedShift,
+      lat: userLocation.lat,
+      lng: userLocation.lng,
+      distance: Math.round(distance),
+      clockOutTime: now.toISOString()
+    };
+
+    // 判斷是否有加班
+    const rec = await getTodayRecordFromServer();
+    if (rec && rec.found) {
+      const clockIn = new Date();
+      const [h, m]  = rec.clockIn.split(':');
+      clockIn.setHours(parseInt(h), parseInt(m), 0, 0);
+
+      // 日班16:30後算加班
+      if (selectedShift === '日班') {
+        const limit = new Date();
+        limit.setHours(16, 30, 0, 0);
+        hasOvertime = now > limit;
+      } else {
+        // 夜班04:00後算加班
+        const limit = new Date();
+        limit.setHours(4, 0, 0, 0);
+        limit.setDate(limit.getDate() + 1);
+        hasOvertime = now > limit;
+      }
+    }
+
+    // 顯示問卷（只有日班才問午餐）
+    surveyAnswers = { lunch: null, rest: null };
+    const section = document.getElementById('surveySection');
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth' });
+
+    if (selectedShift === '日班') {
+      document.getElementById('lunchQuestion').style.display = 'block';
+    } else {
+      surveyAnswers.lunch = false; // 夜班不問午餐
+      checkSurveyComplete();
+    }
+
+    if (hasOvertime) {
+      document.getElementById('restQuestion').style.display = 'block';
+    } else {
+      surveyAnswers.rest = false; // 沒加班不需要休息
+    }
+
+    checkSurveyComplete();
+  }
+}
+
+// 問卷選擇
+function selectSurvey(type, value) {
+  surveyAnswers[type] = value;
+
+  if (type === 'lunch') {
+    document.getElementById('lunchYes').className = 'survey-btn' + (value ? ' selected-yes' : '');
+    document.getElementById('lunchNo').className  = 'survey-btn' + (!value ? ' selected-no' : '');
+  } else {
+    document.getElementById('restYes').className = 'survey-btn' + (value ? ' selected-yes' : '');
+    document.getElementById('restNo').className  = 'survey-btn' + (!value ? ' selected-no' : '');
+  }
+
+  checkSurveyComplete();
+}
+
+function checkSurveyComplete() {
+  const lunchDone = surveyAnswers.lunch !== null;
+  const restDone  = surveyAnswers.rest !== null || !hasOvertime;
+  const btn       = document.getElementById('submitBtn');
+
+  const needLunch = selectedShift === '日班';
+  const allDone   = (!needLunch || lunchDone) && restDone;
+
+  btn.style.display = allDone ? 'block' : 'none';
+}
+
+// 送出問卷 + 完成下班打卡
+async function submitSurvey() {
+  if (!pendingClockOut) return;
+
+  document.getElementById('submitBtn').disabled = true;
+  showToast('送出中...', '');
 
   try {
     const payload = {
       action: 'liff_punch',
-      userId: userId,
-      userName: userName,
-      shift: selectedShift,
-      type: type,
-      lat: userLocation.lat,
-      lng: userLocation.lng,
-      distance: Math.round(distance)
+      ...pendingClockOut,
+      type: '下班',
+      hasLunch: surveyAnswers.lunch || false,
+      hasRest:  surveyAnswers.rest  || false
     };
 
-    const res = await fetch(APPS_SCRIPT_URL, {
+    const res  = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload)
     });
-
     const data = await res.json();
 
     if (data.success) {
-      showToast(type === '上班' ? '✅ 上班打卡成功！' : '✅ 下班打卡成功！', 'success');
+      document.getElementById('surveySection').style.display = 'none';
+      showToast('✅ 下班打卡成功！', 'success');
       loadTodayRecord();
     } else {
       showToast('❌ ' + (data.error || '打卡失敗'), 'error');
+      document.getElementById('submitBtn').disabled = false;
     }
   } catch(err) {
     showToast('❌ 網路錯誤，請重試', 'error');
+    document.getElementById('submitBtn').disabled = false;
   }
+}
 
-  setTimeout(() => updateButtons(), 2000);
+async function getTodayRecordFromServer() {
+  try {
+    const res  = await fetch(`${APPS_SCRIPT_URL}?action=get_record&userId=${userId}`);
+    return await res.json();
+  } catch(e) { return null; }
 }
 
 // ============================================================
