@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>優佳人力資源 · 員工基本資料</title>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const firebaseConfig = {
+    apiKey:"AIzaSyCj2_s8qfw2KeapTu8OaOOBeQZmAME38FQ",
+    authDomain:"youjia-958.firebaseapp.com",
+    projectId:"youjia-958",
+    storageBucket:"youjia-958.firebasestorage.app",
+    messagingSenderId:"298794417435",
+    appId:"1:298794417435:web:08e18b3178b0549666a7be"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  window._db = db;
+  window._addDoc = addDoc;
+  window._col = () => collection(db, 'employees');
+  window._dbReady = true;
+  document.dispatchEvent(new Event('db-ready'));
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+:root{--navy:#162035;--navy2:#1e2d4a;--gold:#c9a84c;--gold-lt:#f0d98a;--gold-dk:#8a6a1f;--bg:#f2efe8;--white:#fff;--border:#ddd6c4;--muted:#888070;--success:#2a6e45;--danger:#b03030;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh;padding-bottom:50px;font-size:16px;}
+.topbar{background:var(--navy);height:62px;display:flex;align-items:center;gap:12px;padding:0 22px;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.2);}
+.topmark{width:36px;height:36px;background:var(--gold);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:var(--navy);}
+.topname{color:var(--gold-lt);font-size:17px;font-weight:700;}
+.topsub{color:rgba(240,217,138,.5);font-size:14px;}
+.wrap{max-width:700px;margin:0 auto;padding:24px 16px;}
+
+/* Progress */
+.prog{display:flex;margin-bottom:24px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+.ps{flex:1;padding:11px 4px;text-align:center;font-size:13px;font-weight:600;background:var(--white);color:var(--muted);border-right:1px solid var(--border);transition:all .2s;}
+.ps:last-child{border-right:none;}
+.ps.on{background:var(--navy);color:var(--gold-lt);}
+.ps.ok{background:#e8f5ee;color:var(--success);}
+
+/* Cards */
+.card{background:var(--white);border-radius:14px;padding:24px 26px;border:1px solid var(--border);box-shadow:0 3px 16px rgba(22,32,53,.08);margin-bottom:16px;display:none;}
+.card.on{display:block;}
+.ctitle{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--gold-lt);display:flex;align-items:center;gap:8px;}
+
+/* Fields */
+.row{display:grid;gap:16px;margin-bottom:16px;}
+.row2{grid-template-columns:1fr 1fr;}
+.row3{grid-template-columns:1fr 1fr 1fr;}
+.row1{grid-template-columns:1fr;}
+.fld{display:flex;flex-direction:column;gap:7px;}
+.fld label{font-size:14px;font-weight:700;color:var(--navy);letter-spacing:.02em;}
+.req{color:var(--danger);margin-left:2px;}
+.fld input,.fld select,.fld textarea{border:1.5px solid var(--border);border-radius:10px;padding:13px 15px;font-size:16px;font-family:inherit;color:var(--navy);background:var(--bg);transition:border-color .2s;}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--gold);background:#fff;}
+.fld textarea{resize:vertical;min-height:90px;line-height:1.7;}
+.hint{font-size:13px;color:var(--muted);margin-top:3px;}
+.err-text{font-size:13px;color:var(--danger);margin-top:4px;display:none;font-weight:500;}
+.fld.has-err input,.fld.has-err select,.fld.has-err textarea{border-color:var(--danger);border-width:2px;}
+.fld.has-err .err-text{display:block;}
+
+.sub{font-size:15px;font-weight:700;color:var(--navy);margin:20px 0 12px;padding-left:10px;border-left:4px solid var(--gold);}
+
+/* Buttons */
+.brow{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+.btn{border:none;border-radius:10px;padding:13px 26px;font-size:15px;font-family:inherit;font-weight:600;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:6px;}
+.btn-p{background:var(--navy);color:var(--gold-lt);}
+.btn-p:hover{background:var(--navy2);}
+.btn-o{background:transparent;border:1.5px solid var(--border);color:var(--navy);}
+.btn-o:hover{border-color:var(--navy);}
+.btn-g{background:var(--gold);color:var(--navy);}
+.btn-g:hover{background:var(--gold-dk);color:#fff;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* Preview table */
+.pvtbl{width:100%;border-collapse:collapse;font-size:15px;}
+.pvtbl tr td:first-child{color:var(--muted);font-size:13px;padding:7px 12px 7px 0;white-space:nowrap;width:110px;vertical-align:top;}
+.pvtbl tr td:last-child{padding:7px 0;border-bottom:1px solid var(--border);}
+.pvtbl .sec-row td{padding:12px 0 5px;font-weight:700;font-size:15px;color:var(--navy);border-bottom:1px solid var(--gold-lt);border-top:none;}
+
+.warn-box{background:#fff8e0;border:1px solid #f0d060;border-radius:8px;padding:13px 16px;font-size:14px;color:#7a5a00;margin-top:14px;}
+.line-ok{background:rgba(0,185,0,.07);border:1px solid rgba(0,185,0,.25);border-radius:8px;padding:11px 15px;font-size:15px;color:#0a7a0a;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+
+/* Success */
+#success{display:none;text-align:center;padding:50px 16px;}
+.s-circle{width:80px;height:80px;background:#e8f5ee;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:38px;}
+.s-title{font-size:24px;font-weight:700;color:var(--success);margin-bottom:10px;}
+.s-sub{color:var(--muted);font-size:16px;line-height:2;}
+
+/* Loading */
+#overlay{position:fixed;inset:0;background:rgba(22,32,53,.9);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--gold-lt);}
+#overlay.hidden{display:none;}
+.spin{width:32px;height:32px;border:3px solid rgba(240,217,138,.3);border-top-color:var(--gold);border-radius:50%;animation:sp .7s linear infinite;margin-bottom:14px;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+@media(max-width:560px){
+  .row2,.row3{grid-template-columns:1fr;}
+  .wrap{padding:16px 12px;}
+  .card{padding:18px 16px;}
+  .ps{font-size:11px;padding:8px 3px;}
+  .fld input,.fld select,.fld textarea{font-size:16px;}
+}
+</style>
+</head>
+<body>
+
+<div id="overlay"><div class="spin"></div><p>連線中…</p></div>
+
+<div class="topbar">
+  <div class="topmark">優</div>
+  <div class="topname">優佳人力資源</div>
+  <div class="topsub">｜ 員工基本資料填寫</div>
+</div>
+
+<div class="wrap">
+
+<div class="prog">
+  <div class="ps on" id="p1">① 基本資料</div>
+  <div class="ps" id="p2">② 聯絡資訊</div>
+  <div class="ps" id="p3">③ 銀行帳號</div>
+  <div class="ps" id="p4">④ 學歷技能</div>
+  <div class="ps" id="p5">⑤ 確認送出</div>
+</div>
+
+<!-- 個資聲明 -->
+<div style="background:#fff8e0;border:1.5px solid #f0d060;border-radius:12px;padding:16px 18px;margin-bottom:18px;font-size:13px;line-height:1.8;color:#5a4500;">
+  <div style="font-weight:700;font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">🔒 個人資料蒐集聲明</div>
+  <p>本表單由 <strong>優佳人力資源有限公司</strong> 蒐集，所填寫之個人資料（包含身分證字號、銀行帳號等敏感資訊）<strong>僅供員工應徵、薪資匯款及人事管理使用</strong>，不會用於其他目的或提供第三方。</p>
+  <ul style="margin:8px 0 0 16px;">
+    <li>本公司不會主動以電話或LINE要求您提供密碼或驗證碼</li>
+    <li>如有疑慮請直接電洽公司確認</li>
+    <li>填寫即表示您同意本公司依法蒐集並處理您的個人資料</li>
+  </ul>
+</div>
+
+<!-- 1. 基本資料 -->
+<div class="card on" id="c1">
+  <div class="ctitle">👤 基本資料</div>
+  <div id="line-ok" class="line-ok" style="display:none">✅ 已透過 LINE Bot 連結，LINE 帳號將自動綁定</div>
+  <div class="row row2">
+    <div class="fld" id="f-name"><label>姓名<span class="req">*</span></label><input id="name" placeholder="請輸入真實姓名"><div class="err-text">請輸入姓名</div></div>
+    <div class="fld"><label>工號</label><input id="empid" placeholder="例：Z082（新進員工若不知道請留空）"><div class="hint">💡 不知道工號沒關係，管理師將協助填入</div></div>
+  </div>
+  <div class="row row2">
+    <div class="fld" id="f-idno"><label>身分證字號<span class="req">*</span></label><input id="idno" placeholder="A123456789" maxlength="10" oninput="this.value=this.value.toUpperCase()"><div class="err-text">格式錯誤：第1碼為英文字母、第2碼為1或2、後8碼為數字（共10碼）</div></div>
+    <div class="fld" id="f-birth"><label>出生年月日<span class="req">*</span></label><input type="date" id="birth"><div class="err-text">請選擇出生日期</div></div>
+  </div>
+  <div class="row row1">
+    <div class="fld" id="f-addr1"><label>戶籍地址<span class="req">*</span></label><input id="addr1" placeholder="例：台北市中正區○○路○號"><div class="err-text">請輸入戶籍地址</div></div>
+  </div>
+  <div class="row row1">
+    <div class="fld"><label>居住地址</label><input id="addr2" placeholder="若與戶籍地址相同請留空"><div class="hint">空白則視為與戶籍地址相同</div></div>
+  </div>
+  <div class="brow"><button class="btn btn-p" onclick="go(1,2)">下一步 →</button></div>
+</div>
+
+<!-- 2. 聯絡資訊 -->
+<div class="card" id="c2">
+  <div class="ctitle">📞 聯絡資訊</div>
+  <div class="row row2">
+    <div class="fld" id="f-phone"><label>手機號碼<span class="req">*</span></label><input type="tel" id="phone" placeholder="09XXXXXXXX" maxlength="10" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')"><div class="err-text">手機格式錯誤（09開頭共10碼純數字）</div></div>
+    <div class="fld"><label>備用電話</label><input type="tel" id="phone2" placeholder="選填"></div>
+  </div>
+  <div class="sub">緊急聯絡人</div>
+  <div class="row row3">
+    <div class="fld" id="f-ec-name"><label>姓名<span class="req">*</span></label><input id="ec-name" placeholder="緊急聯絡人姓名"><div class="err-text">請填寫</div></div>
+    <div class="fld" id="f-ec-rel"><label>關係<span class="req">*</span></label>
+      <select id="ec-rel"><option value="">請選擇</option><option>配偶</option><option>父親</option><option>母親</option><option>兄弟姐妹</option><option>子女</option><option>朋友</option><option>其他</option></select>
+      <div class="err-text">請選擇</div>
+    </div>
+    <div class="fld" id="f-ec-phone"><label>聯絡電話<span class="req">*</span></label><input type="tel" id="ec-phone" placeholder="09XXXXXXXX"><div class="err-text">請填寫</div></div>
+  </div>
+  <div class="brow">
+    <button class="btn btn-o" onclick="go(2,1)">← 上一步</button>
+    <button class="btn btn-p" onclick="go(2,3)">下一步 →</button>
+  </div>
+</div>
+
+<!-- 3. 銀行帳號 -->
+<div class="card" id="c3">
+  <div class="ctitle">🏦 銀行帳號（薪資匯款）</div>
+  <div class="row row2">
+    <div class="fld" id="f-bname">
+      <label>銀行名稱<span class="req">*</span></label>
+      <select id="bname" onchange="fillBankCode()">
+        <option value="">請選擇銀行</option>
+        <option value="台灣銀行|004">台灣銀行（004）</option>
+        <option value="土地銀行|005">土地銀行（005）</option>
+        <option value="合作金庫|006">合作金庫（006）</option>
+        <option value="第一銀行|007">第一銀行（007）</option>
+        <option value="華南銀行|008">華南銀行（008）</option>
+        <option value="彰化銀行|009">彰化銀行（009）</option>
+        <option value="台北富邦|012">台北富邦（012）</option>
+        <option value="國泰世華|013">國泰世華（013）</option>
+        <option value="兆豐銀行|017">兆豐銀行（017）</option>
+        <option value="台灣企銀|050">台灣企銀（050）</option>
+        <option value="渣打銀行|052">渣打銀行（052）</option>
+        <option value="台中銀行|053">台中銀行（053）</option>
+        <option value="京城銀行|054">京城銀行（054）</option>
+        <option value="永豐銀行|807">永豐銀行（807）</option>
+        <option value="玉山銀行|808">玉山銀行（808）</option>
+        <option value="元大銀行|806">元大銀行（806）</option>
+        <option value="日盛銀行|803">日盛銀行（803）</option>
+        <option value="遠東銀行|805">遠東銀行（805）</option>
+        <option value="台新銀行|812">台新銀行（812）</option>
+        <option value="大眾銀行|011">大眾銀行（011）</option>
+        <option value="聯邦銀行|803">聯邦銀行（803）</option>
+        <option value="中國信託|822">中國信託（822）</option>
+        <option value="上海銀行|822">上海銀行（823）</option>
+        <option value="板信銀行|101">板信銀行（101）</option>
+        <option value="三信銀行|103">三信銀行（103）</option>
+        <option value="陽信銀行|118">陽信銀行（118）</option>
+        <option value="花旗銀行|021">花旗銀行（021）</option>
+        <option value="郵局|700">郵局（700）</option>
+        <option value="其他|000">其他</option>
+      </select>
+      <div class="err-text">請選擇銀行</div>
+    </div>
+    <div class="fld">
+      <label>銀行代碼</label>
+      <input id="bcode" placeholder="選擇銀行後自動帶入" readonly style="background:#f0ece3;color:var(--muted);">
+      <div class="hint">選擇銀行後自動填入</div>
+    </div>
+  </div>
+  <div class="row row2">
+    <div class="fld"><label>分行名稱</label><input id="bbranch" placeholder="例：中正分行（選填）"></div>
+    <div class="fld" id="f-bacct"><label>銀行帳號<span class="req">*</span></label>
+      <input id="bacct" placeholder="請輸入完整帳號（純數字）" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <div class="err-text">帳號格式錯誤：須為純數字且至少10碼</div>
+    </div>
+  </div>
+  <div class="row row1">
+    <div class="fld"><label>帳戶戶名</label><input id="bholder" placeholder="若與本人姓名相同可留空"></div>
+  </div>
+  <div class="brow">
+    <button class="btn btn-o" onclick="go(3,2)">← 上一步</button>
+    <button class="btn btn-p" onclick="go(3,4)">下一步 →</button>
+  </div>
+</div>
+
+<!-- 4. 學歷技能 -->
+<div class="card" id="c4">
+  <div class="ctitle">🎓 學歷與專長技能</div>
+  <div class="sub">最高學歷</div>
+  <div class="row row3">
+    <div class="fld"><label>學歷程度</label>
+      <select id="edu">
+        <option value="">請選擇</option>
+        <option>國中（含以下）</option><option>高中／高職</option>
+        <option>專科</option><option>大學</option><option>碩士</option><option>博士</option>
+      </select>
+    </div>
+    <div class="fld"><label>學校名稱</label><input id="school" placeholder="學校（選填）"></div>
+    <div class="fld"><label>科系</label><input id="dept" placeholder="科系（選填）"></div>
+  </div>
+  <div class="sub">專長技能</div>
+  <div class="row row1">
+    <div class="fld"><label>專長技能</label><textarea id="skills" placeholder="例：電腦操作、倉儲管理、堆高機執照、食品相關證照、叉車…"></textarea></div>
+  </div>
+  <div class="sub">工作經歷</div>
+  <div class="row row1">
+    <div class="fld"><label>過去工作經歷</label><textarea id="exp" placeholder="例：○○公司 倉管 2年；○○工廠 作業員 3年（選填）"></textarea></div>
+  </div>
+  <div class="sub">其他</div>
+  <div class="row row1">
+    <div class="fld"><label>其他說明</label><textarea id="notes" placeholder="其他需要說明的事項（選填）"></textarea></div>
+  </div>
+  <div class="brow">
+    <button class="btn btn-o" onclick="go(4,3)">← 上一步</button>
+    <button class="btn btn-p" onclick="goPreview()">預覽確認 →</button>
+  </div>
+</div>
+
+<!-- 5. 確認 -->
+<div class="card" id="c5">
+  <div class="ctitle">✅ 確認資料</div>
+  <div id="pv"></div>
+  <div class="warn-box">⚠ 請確認以上資料正確無誤，送出後如需修改請聯繫管理師。</div>
+  <div id="sub-msg" style="font-size:13px;color:var(--muted);margin-top:10px;display:none;"></div>
+  <div class="brow">
+    <button class="btn btn-o" onclick="go(5,4)">← 修改</button>
+    <button class="btn btn-g" id="sub-btn" onclick="submit()">✓ 確認送出</button>
+  </div>
+</div>
+
+<!-- Success -->
+<div id="success">
+  <div class="s-circle">🎉</div>
+  <div class="s-title">資料送出成功！</div>
+  <div class="s-sub">
+    您的基本資料已成功送出。<br>
+    管理師將盡快處理，如有疑問請聯繫管理師。<br><br>
+    <strong>現在可以到報班系統報班了！</strong><br><br>
+    <a href="https://cozy-toffee-7ed06f.netlify.app" style="background:var(--navy);color:var(--gold-lt);padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block;margin-top:4px;">前往報班系統 →</a>
+  </div>
+</div>
+
+</div>
+
+<script>
+const lineId = new URLSearchParams(location.search).get('uid') || '';
+
+document.addEventListener('db-ready', () => {
+  document.getElementById('overlay').classList.add('hidden');
+  if (lineId) document.getElementById('line-ok').style.display = 'flex';
+});
+setTimeout(() => {
+  if (!window._dbReady) document.getElementById('overlay').innerHTML = '<p style="color:#f99;padding:20px;text-align:center">⚠ 連線失敗，請重新整理</p>';
+}, 8000);
+
+function g(id) { return document.getElementById(id).value.trim(); }
+
+// 銀行下拉自動帶入代碼
+function fillBankCode() {
+  const sel = document.getElementById('bname');
+  const parts = sel.value.split('|');
+  document.getElementById('bcode').value = parts[1] || '';
+}
+
+// 身分證字號驗證（含檢查碼）
+function validateIdno(v) {
+  if (!/^[A-Z][12]\d{8}$/.test(v)) return false;
+  const letterMap = {A:10,B:11,C:12,D:13,E:14,F:15,G:16,H:17,I:34,J:18,K:19,L:20,M:21,N:22,O:35,P:23,Q:24,R:25,S:26,T:27,U:28,V:29,W:32,X:30,Y:31,Z:33};
+  const n = letterMap[v[0]];
+  const sum = Math.floor(n/10) + (n%10)*9 + v[1]*8 + v[2]*7 + v[3]*6 + v[4]*5 + v[5]*4 + v[6]*3 + v[7]*2 + v[8]*1 + parseInt(v[9]);
+  return sum % 10 === 0;
+}
+
+// 手機號碼驗證
+function validatePhone(v) { return /^09\d{8}$/.test(v.replace(/[-\s]/g,'')); }
+
+// 銀行帳號驗證
+function validateBankAcct(v) { return /^\d{10,16}$/.test(v); }
+
+const rules = {
+  1: [
+    {id:'name',  fid:'f-name',  check: v => v !== '',      msg:'請輸入姓名'},
+    {id:'idno',  fid:'f-idno',  check: v => validateIdno(v), msg:'身分證字號格式或檢查碼錯誤，請確認'},
+    {id:'birth', fid:'f-birth', check: v => v !== '',      msg:'請選擇出生日期'},
+    {id:'addr1', fid:'f-addr1', check: v => v !== '',      msg:'請輸入戶籍地址'},
+  ],
+  2: [
+    {id:'phone',    fid:'f-phone',    check: v => validatePhone(v), msg:'手機格式錯誤（須為09開頭共10碼）'},
+    {id:'ec-name',  fid:'f-ec-name',  check: v => v !== '',         msg:'請填寫緊急聯絡人姓名'},
+    {id:'ec-rel',   fid:'f-ec-rel',   check: v => v !== '',         msg:'請選擇關係'},
+    {id:'ec-phone', fid:'f-ec-phone', check: v => v !== '',         msg:'請填寫聯絡電話'},
+  ],
+  3: [
+    {id:'bname', fid:'f-bname', check: v => v !== '',            msg:'請選擇銀行'},
+    {id:'bacct', fid:'f-bacct', check: v => validateBankAcct(v), msg:'帳號須為純數字且至少10碼'},
+  ],
+};
+
+function validate(sec) {
+  if (!rules[sec]) return true;
+  let ok = true;
+  rules[sec].forEach(r => {
+    const el = document.getElementById(r.id);
+    const f  = document.getElementById(r.fid);
+    const valid = r.check(el.value.trim());
+    f.classList.toggle('has-err', !valid);
+    if (!valid) ok = false;
+  });
+  return ok;
+}
+
+function setPage(n) {
+  for (let i = 1; i <= 5; i++) {
+    document.getElementById(`c${i}`).classList.toggle('on', i === n);
+    const p = document.getElementById(`p${i}`);
+    p.className = 'ps' + (i < n ? ' ok' : i === n ? ' on' : '');
+  }
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function go(from, to) {
+  if (to > from && !validate(from)) return;
+  setPage(to);
+}
+
+function goPreview() {
+  if (!validate(4)) return;
+  buildPreview();
+  setPage(5);
+}
+
+function row(label, val) {
+  if (!val) val = '—';
+  return `<tr><td>${label}</td><td>${val}</td></tr>`;
+}
+function sec(title) {
+  return `<tr class="sec-row"><td colspan="2">${title}</td></tr>`;
+}
+
+function buildPreview() {
+  const bnameRaw = document.getElementById('bname').value;
+  const bnameDisplay = bnameRaw ? bnameRaw.split('|')[0] : '—';
+  const html = `<table class="pvtbl">
+    ${sec('基本資料')}
+    ${row('姓名', g('name'))}
+    ${row('工號', g('empid') || '（待管理師填入）')}
+    ${row('身分證', g('idno'))}
+    ${row('出生日期', g('birth'))}
+    ${row('戶籍地址', g('addr1'))}
+    ${row('居住地址', g('addr2') || '（同戶籍）')}
+    ${sec('聯絡資訊')}
+    ${row('手機', g('phone'))}
+    ${row('備用電話', g('phone2'))}
+    ${row('緊急聯絡人', g('ec-name') + '（' + g('ec-rel') + '）' + g('ec-phone'))}
+    ${sec('銀行帳號')}
+    ${row('銀行', bnameDisplay + (g('bbranch') ? ' ' + g('bbranch') : ''))}
+    ${row('代碼', g('bcode'))}
+    ${row('帳號', g('bacct'))}
+    ${row('戶名', g('bholder'))}
+    ${sec('學歷技能')}
+    ${row('學歷', [g('edu'), g('school'), g('dept')].filter(Boolean).join(' '))}
+    ${row('專長技能', g('skills'))}
+    ${row('工作經歷', g('exp'))}
+    ${row('其他說明', g('notes'))}
+  </table>`;
+  document.getElementById('pv').innerHTML = html;
+}
+
+async function submit() {
+  const btn = document.getElementById('sub-btn');
+  const msg = document.getElementById('sub-msg');
+  btn.disabled = true;
+  msg.style.display = 'block';
+  msg.textContent = '⏳ 送出中，請稍候…';
+
+  const bnameRaw = document.getElementById('bname').value;
+  const bnameClean = bnameRaw ? bnameRaw.split('|')[0] : '';
+
+  const data = {
+    name: g('name'), empid: g('empid').toUpperCase(), idno: g('idno').toUpperCase(),
+    birth: g('birth'), addr1: g('addr1'), addr2: g('addr2'),
+    phone: g('phone'), phone2: g('phone2'),
+    ecName: g('ec-name'), ecRel: g('ec-rel'), ecPhone: g('ec-phone'),
+    bankName: bnameClean, bankBranch: g('bbranch'), bankCode: g('bcode'),
+    bankAccount: g('bacct'), bankHolder: g('bholder'),
+    eduLevel: g('edu'), eduSchool: g('school'), eduDept: g('dept'),
+    skills: g('skills'), experience: g('exp'), notes: g('notes'),
+    lineId: lineId,
+    createdAt: new Date().toLocaleString('zh-TW', {timeZone:'Asia/Taipei', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false}).replace(/\//g,'-'),
+    status: 'active'
+  };
+
+  try {
+    // 1. 寫入 Firestore
+    await window._addDoc(window._col(), data);
+
+    // 2. 同步寫入 Google Sheets 員工清單
+    try {
+      await fetch('https://script.google.com/macros/s/AKfycbxXs2mDh1cZYy64cFJ87VGqiTl49wbTlPudoevmojhudp0diUZhffLrRWfkC8ZzRGef/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'add_employee',
+          name: data.name,
+          lineId: data.lineId,
+          phone: data.phone,
+          bankAccount: data.bankAccount
+        })
+      });
+    } catch(sheetErr) {
+      console.log('Sheets同步失敗（不影響主要流程）:', sheetErr);
+    }
+
+    msg.textContent = '✓ 送出成功！';
+    setTimeout(() => {
+      document.querySelector('.prog').style.display = 'none';
+      document.getElementById('c5').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+    }, 600);
+  } catch(e) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '❌ 送出失敗，請重試';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

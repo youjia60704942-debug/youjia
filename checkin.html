@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>優佳打卡系統</title>
+<script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --green: #06C755;
+    --green-dark: #05a847;
+    --green-light: #e8f9ee;
+    --red: #FF4757;
+    --red-light: #fff0f1;
+    --gray: #8c8c8c;
+    --gray-light: #f5f5f5;
+    --text: #1a1a1a;
+    --white: #ffffff;
+    --shadow: 0 4px 24px rgba(0,0,0,0.10);
+    --radius: 20px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: #f0f4f0;
+    min-height: 100vh;
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header {
+    background: var(--green);
+    padding: 48px 24px 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 160px; height: 160px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: -20px;
+    width: 120px; height: 120px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+  }
+  .header-logo {
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .header-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 52px;
+    font-weight: 500;
+    color: white;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .header-date {
+    font-size: 15px;
+    color: rgba(255,255,255,0.85);
+    margin-top: 8px;
+  }
+
+  /* User Card */
+  .user-card {
+    margin: -20px 20px 0;
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    z-index: 10;
+  }
+  .user-avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--green-light);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 17px; font-weight: 700; color: var(--text); }
+  .user-status { font-size: 13px; color: var(--gray); margin-top: 2px; }
+
+  /* Location Card */
+  .location-card {
+    margin: 16px 20px 0;
+    background: white;
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .location-label {
+    font-size: 12px;
+    color: var(--gray);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .location-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .location-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--gray);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .location-dot.ok { background: var(--green); box-shadow: 0 0 0 4px var(--green-light); }
+  .location-dot.err { background: var(--red); box-shadow: 0 0 0 4px var(--red-light); }
+  .location-text {
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .location-dist {
+    margin-left: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--gray);
+  }
+
+  /* Shift Selector */
+  .shift-section {
+    margin: 16px 20px 0;
+  }
+  .shift-label {
+    font-size: 12px;
+    color: var(--gray);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-left: 4px;
+  }
+  .shift-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .shift-btn {
+    background: white;
+    border: 2.5px solid #e8e8e8;
+    border-radius: 14px;
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .shift-btn.active {
+    border-color: var(--green);
+    background: var(--green-light);
+  }
+  .shift-btn-icon { font-size: 24px; margin-bottom: 6px; }
+  .shift-btn-name { font-size: 15px; font-weight: 700; color: var(--text); }
+  .shift-btn-rate { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+  /* Punch Button */
+  .punch-section {
+    margin: 24px 20px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .punch-btn {
+    border: none;
+    border-radius: 18px;
+    padding: 20px 16px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    box-shadow: var(--shadow);
+  }
+  .punch-btn:active { transform: scale(0.96); }
+  .punch-btn-icon { font-size: 28px; }
+  .punch-btn.in {
+    background: var(--green);
+    color: white;
+  }
+  .punch-btn.out {
+    background: white;
+    color: var(--red);
+    border: 2.5px solid var(--red-light);
+  }
+  .punch-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Today Record */
+  .record-section {
+    margin: 20px 20px 0;
+    background: white;
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .record-label {
+    font-size: 12px;
+    color: var(--gray);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .record-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .record-row:last-child { border-bottom: none; }
+  .record-key { font-size: 13px; color: var(--gray); }
+  .record-val { font-size: 14px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; }
+  .record-val.green { color: var(--green); }
+  .record-val.red { color: var(--red); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 40px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #1a1a1a;
+    color: white;
+    padding: 14px 24px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 999;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+
+  /* Loading */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 16px;
+    background: var(--green);
+  }
+  .loading-logo { font-size: 48px; }
+  .loading-text { color: white; font-size: 16px; font-weight: 500; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .main { padding-bottom: 40px; }
+  .fade-in { animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">
+  <div class="loading-logo">🕐</div>
+  <div class="spinner"></div>
+  <div class="loading-text">載入中...</div>
+</div>
+
+<div id="main" class="main" style="display:none">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">優佳人力資源</div>
+    <div class="header-time" id="clock">--:--</div>
+    <div class="header-date" id="dateDisplay">載入中...</div>
+  </div>
+
+  <!-- User Card -->
+  <div class="user-card fade-in">
+    <div class="user-avatar" id="userAvatar">👤</div>
+    <div class="user-info">
+      <div class="user-name" id="userName">載入中...</div>
+      <div class="user-status" id="userStatus">員工</div>
+    </div>
+  </div>
+
+  <!-- Location Card -->
+  <div class="location-card fade-in">
+    <div class="location-label">📍 打卡位置</div>
+    <div class="location-row">
+      <div class="location-dot" id="locDot"></div>
+      <div class="location-text" id="locText">正在取得位置...</div>
+      <div class="location-dist" id="locDist"></div>
+    </div>
+  </div>
+
+  <!-- Shift Selector -->
+  <div class="shift-section fade-in">
+    <div class="shift-label">班別選擇</div>
+    <div class="shift-buttons">
+      <div class="shift-btn active" id="btnDay" onclick="selectShift('日班')">
+        <div class="shift-btn-icon">🌞</div>
+        <div class="shift-btn-name">日班</div>
+        <div class="shift-btn-rate">NT$215/時</div>
+      </div>
+      <div class="shift-btn" id="btnNight" onclick="selectShift('夜班')">
+        <div class="shift-btn-icon">🌙</div>
+        <div class="shift-btn-name">夜班</div>
+        <div class="shift-btn-rate">NT$240/時</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Punch Buttons -->
+  <div class="punch-section fade-in">
+    <button class="punch-btn in" id="btnIn" onclick="punch('上班')" disabled>
+      <span class="punch-btn-icon">✅</span>
+      上班打卡
+    </button>
+    <button class="punch-btn out" id="btnOut" onclick="punch('下班')" disabled>
+      <span class="punch-btn-icon">🏠</span>
+      下班打卡
+    </button>
+  </div>
+
+  <!-- Today Record -->
+  <div class="record-section fade-in" id="recordSection" style="display:none">
+    <div class="record-label">📋 今日記錄</div>
+    <div class="record-row">
+      <span class="record-key">班別</span>
+      <span class="record-val" id="recShift">--</span>
+    </div>
+    <div class="record-row">
+      <span class="record-key">上班時間</span>
+      <span class="record-val green" id="recIn">--:--</span>
+    </div>
+    <div class="record-row">
+      <span class="record-key">下班時間</span>
+      <span class="record-val red" id="recOut">--:--</span>
+    </div>
+    <div class="record-row">
+      <span class="record-key">工時</span>
+      <span class="record-val" id="recHours">--</span>
+    </div>
+    <div class="record-row">
+      <span class="record-key">今日薪資</span>
+      <span class="record-val" id="recSalary">--</span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// 設定
+// ============================================================
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxXs2mDh1cZYy64cFJ87VGqiTl49wbTlPudoevmojhudp0diUZhffLrRWfkC8ZzRGef/exec';
+const LIFF_ID = '2010283197-bzuS2WUI';
+const OFFICE_LAT = 25.046265181431416;
+const OFFICE_LNG = 121.36004142235616;
+const RADIUS = 100; // 公尺
+
+// ============================================================
+// 狀態
+// ============================================================
+let selectedShift = '日班';
+let userLocation = null;
+let distance = null;
+let inRange = false;
+let userId = '';
+let userName = '';
+let todayRecord = null;
+
+// ============================================================
+// 初始化
+// ============================================================
+async function init() {
+  // 時鐘
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  try {
+    // 初始化 LIFF
+    await liff.init({ liffId: LIFF_ID });
+
+    if (!liff.isLoggedIn()) {
+      liff.login();
+      return;
+    }
+
+    // 取得用戶資料
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+    userName = profile.displayName;
+
+    document.getElementById('userName').textContent = userName;
+    document.getElementById('userStatus').textContent = '員工';
+
+    if (profile.pictureUrl) {
+      document.getElementById('userAvatar').innerHTML =
+        `<img src="${profile.pictureUrl}" alt="avatar">`;
+    }
+
+    // 取得位置
+    getLocation();
+
+    // 顯示主畫面
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+
+    // 載入今日記錄
+    loadTodayRecord();
+
+  } catch(err) {
+    console.error(err);
+    showToast('初始化失敗：' + err.message, 'error');
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+  }
+}
+
+// ============================================================
+// 時鐘
+// ============================================================
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+
+  const days = ['日','一','二','三','四','五','六'];
+  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 星期${days[now.getDay()]}`;
+  document.getElementById('dateDisplay').textContent = dateStr;
+}
+
+// ============================================================
+// 定位
+// ============================================================
+function getLocation() {
+  if (!navigator.geolocation) {
+    setLocationStatus(false, '瀏覽器不支援定位');
+    return;
+  }
+
+  document.getElementById('locText').textContent = '正在取得位置...';
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      distance = calcDistance(userLocation.lat, userLocation.lng, OFFICE_LAT, OFFICE_LNG);
+      inRange = distance <= RADIUS;
+
+      if (inRange) {
+        setLocationStatus(true, '已在打卡範圍內', `${Math.round(distance)}m`);
+      } else {
+        setLocationStatus(false, '不在打卡範圍內', `${Math.round(distance)}m`);
+      }
+
+      updateButtons();
+    },
+    err => {
+      setLocationStatus(false, '無法取得位置，請允許定位權限');
+      updateButtons();
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+function setLocationStatus(ok, text, dist) {
+  const dot = document.getElementById('locDot');
+  dot.className = 'location-dot ' + (ok ? 'ok' : 'err');
+  document.getElementById('locText').textContent = text;
+  document.getElementById('locDist').textContent = dist || '';
+}
+
+// ============================================================
+// 班別選擇
+// ============================================================
+function selectShift(shift) {
+  selectedShift = shift;
+  document.getElementById('btnDay').classList.toggle('active', shift === '日班');
+  document.getElementById('btnNight').classList.toggle('active', shift === '夜班');
+}
+
+// ============================================================
+// 按鈕狀態
+// ============================================================
+function updateButtons() {
+  const btnIn  = document.getElementById('btnIn');
+  const btnOut = document.getElementById('btnOut');
+
+  if (inRange) {
+    btnIn.disabled  = false;
+    btnOut.disabled = false;
+  } else {
+    btnIn.disabled  = true;
+    btnOut.disabled = true;
+  }
+}
+
+// ============================================================
+// 打卡
+// ============================================================
+async function punch(type) {
+  if (!inRange) {
+    showToast('⚠️ 不在打卡範圍內', 'error');
+    return;
+  }
+
+  const btnIn  = document.getElementById('btnIn');
+  const btnOut = document.getElementById('btnOut');
+  btnIn.disabled = true;
+  btnOut.disabled = true;
+
+  showToast('打卡中...', '');
+
+  try {
+    const payload = {
+      action: 'liff_punch',
+      userId: userId,
+      userName: userName,
+      shift: selectedShift,
+      type: type,
+      lat: userLocation.lat,
+      lng: userLocation.lng,
+      distance: Math.round(distance)
+    };
+
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      showToast(type === '上班' ? '✅ 上班打卡成功！' : '✅ 下班打卡成功！', 'success');
+      loadTodayRecord();
+    } else {
+      showToast('❌ ' + (data.error || '打卡失敗'), 'error');
+    }
+  } catch(err) {
+    showToast('❌ 網路錯誤，請重試', 'error');
+  }
+
+  setTimeout(() => updateButtons(), 2000);
+}
+
+// ============================================================
+// 載入今日記錄
+// ============================================================
+async function loadTodayRecord() {
+  if (!userId) return;
+  try {
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=get_record&userId=${userId}`);
+    const data = await res.json();
+
+    if (data.found) {
+      todayRecord = data;
+      const section = document.getElementById('recordSection');
+      section.style.display = 'block';
+      document.getElementById('recShift').textContent = data.shift || '--';
+      document.getElementById('recIn').textContent   = data.clockIn || '--:--';
+      document.getElementById('recOut').textContent  = data.clockOut || '--:--';
+      document.getElementById('recHours').textContent = data.hours ? data.hours + ' 小時' : '--';
+      document.getElementById('recSalary').textContent = data.salary ? 'NT$ ' + data.salary.toLocaleString() : '--';
+    }
+  } catch(e) {}
+}
+
+// ============================================================
+// 工具
+// ============================================================
+function calcDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+let toastTimer;
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = 'toast', 3000);
+}
+
+// 啟動
+init();
+</script>
+</body>
+</html>

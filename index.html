@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>優佳人力 · 報班系統</title>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, orderBy, query, setDoc }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyCj2_s8qfw2KeapTu8OaOOBeQZmAME38FQ",
+    authDomain:        "youjia-958.firebaseapp.com",
+    projectId:         "youjia-958",
+    storageBucket:     "youjia-958.firebasestorage.app",
+    messagingSenderId: "298794417435",
+    appId:             "1:298794417435:web:08e18b3178b0549666a7be"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  window._db  = db;
+  window._fns = { addDoc, getDocs, deleteDoc, doc, updateDoc, orderBy, query, setDoc,
+                  collection: (name) => collection(db, name) };
+  window._dbReady = true;
+  document.dispatchEvent(new Event('db-ready'));
+</script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+:root{--navy:#162035;--navy2:#1e2d4a;--gold:#c9a84c;--gold-lt:#f0d98a;--gold-dk:#8a6a1f;--bg:#f2efe8;--white:#fff;--border:#ddd6c4;--muted:#888070;--success:#2a6e45;--danger:#b03030;--shadow:0 4px 24px rgba(22,32,53,.10);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh;font-size:16px;}
+#landing{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;background:var(--navy);position:relative;overflow:hidden;}
+#landing::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;border:1px solid rgba(201,168,76,.15);top:-200px;right:-200px;}
+#landing::after{content:'';position:absolute;width:400px;height:400px;border-radius:50%;border:1px solid rgba(201,168,76,.1);bottom:-150px;left:-100px;}
+.landing-logo{display:flex;align-items:center;gap:14px;margin-bottom:48px;position:relative;z-index:1;}
+.landing-mark{width:58px;height:58px;background:var(--gold);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:var(--navy);}
+.landing-title{color:var(--gold-lt);font-size:24px;font-weight:700;letter-spacing:.06em;}
+.landing-sub{color:rgba(240,217,138,.5);font-size:15px;margin-top:2px;}
+.role-cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1;}
+.role-card{background:rgba(255,255,255,.05);border:1.5px solid rgba(201,168,76,.25);border-radius:16px;padding:36px 40px;text-align:center;cursor:pointer;transition:all .22s;min-width:200px;}
+.role-card:hover{background:rgba(201,168,76,.12);border-color:var(--gold);transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.3);}
+.role-icon{font-size:44px;margin-bottom:14px;}
+.role-name{color:var(--gold-lt);font-size:20px;font-weight:700;margin-bottom:8px;}
+.role-desc{color:rgba(240,217,138,.55);font-size:15px;line-height:1.6;}
+#app{display:none;min-height:100vh;}
+header{background:var(--navy);height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.2);}
+.h-logo{display:flex;align-items:center;gap:10px;}
+.h-mark{width:36px;height:36px;border-radius:8px;background:var(--gold);color:var(--navy);font-weight:900;font-size:17px;display:flex;align-items:center;justify-content:center;}
+.h-name{color:var(--gold-lt);font-size:16px;font-weight:700;}
+.h-badge{background:rgba(201,168,76,.18);border:1px solid rgba(201,168,76,.35);color:var(--gold-lt);padding:5px 14px;border-radius:20px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;}
+.h-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);}
+nav{display:flex;gap:4px;flex-wrap:wrap;}
+nav button{background:none;border:none;color:rgba(255,255,255,.55);padding:7px 14px;border-radius:6px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .18s;}
+nav button:hover{color:var(--gold-lt);background:rgba(255,255,255,.07);}
+nav button.active{color:var(--gold-lt);background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);}
+.page{display:none;max-width:900px;margin:0 auto;padding:30px 18px;}
+.page.active{display:block;}
+.card{background:var(--white);border-radius:14px;padding:26px 30px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:20px;}
+.card-title{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid var(--gold-lt);display:flex;align-items:center;gap:8px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
+.form-group{display:flex;flex-direction:column;gap:7px;}
+.form-group label{font-size:14px;font-weight:700;color:var(--navy);}
+.form-group input,.form-group select{border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-size:16px;font-family:inherit;color:var(--navy);background:var(--bg);transition:border-color .2s;}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--gold);background:#fff;}
+.btn{border:none;border-radius:10px;padding:12px 22px;font-size:15px;font-family:inherit;font-weight:600;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:var(--navy);color:var(--gold-lt);}
+.btn-primary:hover{background:var(--navy2);transform:translateY(-1px);}
+.btn-gold{background:var(--gold);color:var(--navy);}
+.btn-gold:hover{background:var(--gold-dk);color:#fff;}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--navy);}
+.btn-outline:hover{border-color:var(--navy);}
+.btn-sm{padding:6px 12px;font-size:13px;border-radius:7px;}
+.btn-del{background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:4px;font-family:inherit;}
+.btn-del:hover{background:rgba(176,48,48,.08);}
+.btn-approve{background:#e8f5ee;color:var(--success);border:1px solid #b8dfc8;border-radius:6px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;margin-right:4px;}
+.btn-approve:hover{background:var(--success);color:#fff;}
+.btn-reject{background:#fdf0f0;color:var(--danger);border:1px solid #f0c0c0;border-radius:6px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-reject:hover{background:var(--danger);color:#fff;}
+.badge-day{display:inline-block;background:#ddeeff;color:#1a4fa8;border-radius:5px;padding:3px 10px;font-size:12px;font-weight:700;}
+.badge-night{display:inline-block;background:var(--navy);color:var(--gold-lt);border-radius:5px;padding:3px 10px;font-size:12px;font-weight:700;}
+.badge-pending{display:inline-block;background:#fff8e0;color:#8a6a00;border:1px solid #f0d060;border-radius:5px;padding:3px 10px;font-size:12px;font-weight:700;}
+.badge-approved{display:inline-block;background:#e8f5ee;color:var(--success);border:1px solid #b8dfc8;border-radius:5px;padding:3px 10px;font-size:12px;font-weight:700;}
+.badge-rejected{display:inline-block;background:#fdf0f0;color:var(--danger);border:1px solid #f0c0c0;border-radius:5px;padding:3px 10px;font-size:12px;font-weight:700;}
+.autocomplete-wrap{position:relative;}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--gold);border-radius:10px;z-index:50;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12);margin-top:2px;}
+.ac-item{padding:12px 14px;cursor:pointer;font-size:15px;transition:background .12s;display:flex;justify-content:space-between;align-items:center;}
+.ac-item:hover{background:rgba(201,168,76,.1);}
+.ac-sub{font-size:13px;color:var(--muted);font-family:monospace;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.stat{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px 18px;text-align:center;}
+.stat-n{font-size:28px;font-weight:700;color:var(--navy);}
+.stat-l{font-size:13px;color:var(--muted);margin-top:4px;}
+.dtabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.dtab{padding:7px 16px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;transition:all .18s;}
+.dtab:hover{border-color:var(--gold);color:var(--gold-dk);}
+.dtab.active{background:var(--navy);color:var(--gold-lt);border-color:var(--navy);}
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:14px;}
+th{background:var(--navy);color:var(--gold-lt);padding:11px 13px;text-align:left;font-size:13px;font-weight:600;}
+th:first-child{border-radius:8px 0 0 0;}th:last-child{border-radius:0 8px 0 0;}
+td{padding:11px 13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(201,168,76,.04);}
+.preview-tbl{width:100%;border-collapse:collapse;font-size:14px;}
+.preview-tbl .ph td{background:#f5f5a0;text-align:center;font-weight:700;font-size:15px;padding:10px;border:1px solid #bbb;color:var(--navy);}
+.preview-tbl .pc td{background:#ddeeff;text-align:center;font-weight:600;padding:8px 10px;border:1px solid #bbb;font-size:14px;}
+.preview-tbl .pd td{border:1px solid #ccc;padding:7px 12px;text-align:center;}
+.preview-tbl .pd:nth-child(even) td{background:#fafaf6;}
+.sync-st{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);padding:3px 0;}
+.spin{width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.success-box{text-align:center;padding:36px 20px;}
+.success-circle{width:68px;height:68px;background:#e8f5ee;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:30px;}
+.success-title{font-size:19px;font-weight:700;color:var(--success);margin-bottom:7px;}
+.success-sub{color:var(--muted);font-size:14px;line-height:1.8;}
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:var(--gold-lt);padding:11px 24px;border-radius:24px;font-size:13px;font-weight:600;box-shadow:0 4px 24px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;pointer-events:none;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+.modal-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;}
+.modal-bd.open{display:flex;}
+.modal{background:var(--white);border-radius:14px;padding:26px;width:90%;max-width:500px;box-shadow:0 8px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px;}
+.modal-acts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+#db-overlay{position:fixed;inset:0;background:rgba(22,32,53,.92);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--gold-lt);}
+#db-overlay .spin{width:30px;height:30px;border-width:3px;margin-bottom:12px;}
+#db-overlay.hidden{display:none;}
+.info-box{background:#fff8e0;border:1px solid #f0d060;border-radius:8px;padding:12px 16px;font-size:13px;color:#7a5a00;margin-bottom:14px;line-height:1.6;}
+.empty{text-align:center;padding:32px;color:var(--muted);font-size:14px;}
+@media(max-width:640px){
+  .form-row,.form-row-3{grid-template-columns:1fr;}
+  .stats{grid-template-columns:1fr 1fr;}
+  header{padding:0 12px;}
+  .page{padding:16px 12px;}
+  .card{padding:16px 14px;}
+  nav button{padding:5px 8px;font-size:11px;}
+  .role-cards{flex-direction:column;align-items:center;}
+  .role-card{width:100%;max-width:300px;}
+}
+</style>
+</head>
+<body>
+
+<div id="db-overlay"><div class="spin"></div><p>連線資料庫中…</p></div>
+
+<div id="landing" style="display:none">
+  <div class="landing-logo">
+    <div class="landing-mark">優</div>
+    <div><div class="landing-title">優佳人力資源</div><div class="landing-sub">報班管理系統</div></div>
+  </div>
+  <div class="role-cards">
+    <div class="role-card" onclick="enterRole('staff')">
+      <div class="role-icon">👤</div>
+      <div class="role-name">員工報班</div>
+      <div class="role-desc">輸入工號自動帶入資料<br>報班即時上傳</div>
+    </div>
+    <div class="role-card" onclick="enterRole('admin')">
+      <div class="role-icon">🔐</div>
+      <div class="role-name">管理師後台</div>
+      <div class="role-desc">審核報班・LINE通知<br>員工資料庫・匯出名單</div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="h-logo"><div class="h-mark">優</div><div class="h-name">優佳人力資源</div></div>
+    <nav id="main-nav"></nav>
+    <div class="h-badge"><div class="dot"></div><span id="role-label"></span></div>
+  </header>
+
+  <!-- 員工報班 -->
+  <div id="pg-staff" class="page">
+    <div class="card" id="form-card">
+      <div class="card-title">📋 個人報班登記</div>
+      <div class="info-box">💡 輸入工號或姓名，系統會自動帶入您的資料</div>
+      <div class="form-row">
+        <div class="form-group"><label>工號</label>
+          <div class="autocomplete-wrap">
+            <input type="text" id="s-empid" placeholder="工號（選填，不知道可留空）" oninput="acSearch('empid')" autocomplete="off">
+            <div class="ac-list" id="ac-empid" style="display:none"></div>
+          </div>
+        </div>
+        <div class="form-group"><label>姓名</label>
+          <div class="autocomplete-wrap">
+            <input type="text" id="s-name" placeholder="輸入姓名" oninput="acSearch('name')" autocomplete="off">
+            <div class="ac-list" id="ac-name" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 身分確認提示（選擇後顯示）-->
+      <div id="identity-confirm" style="display:none;background:#e8f5ee;border:1.5px solid #b8dfc8;border-radius:10px;padding:14px 16px;margin-bottom:14px;">
+        <div style="font-size:14px;font-weight:600;color:#1a5c35;margin-bottom:6px;">👋 請確認您的身分</div>
+        <div style="font-size:15px;color:#162035;">請問您是 <strong id="confirm-name" style="color:#c9a84c;font-size:17px;"></strong> 嗎？</div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button class="btn" style="background:#2a6e45;color:#fff;padding:7px 18px;font-size:13px;" onclick="confirmIdentity(true)">✓ 是的，是我</button>
+          <button class="btn btn-outline" style="padding:7px 18px;font-size:13px;" onclick="confirmIdentity(false)">✗ 不是，重新輸入</button>
+        </div>
+      </div>
+
+      <div id="shift-fields" style="display:none">
+        <div class="form-row">
+          <div class="form-group"><label>報班日期</label><input type="date" id="s-date"></div>
+          <div class="form-group"><label>班別</label>
+            <select id="s-shift"><option value="">請選擇</option><option value="日班">日班</option><option value="晚班">晚班</option></select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:18px"><label>備註（選填）</label><input type="text" id="s-note" placeholder="例：代班、加班…"></div>
+        <div id="staff-sync" class="sync-st" style="display:none;margin-bottom:10px;"></div>
+        <button class="btn btn-primary" onclick="staffSubmit()" style="width:100%;justify-content:center;padding:13px;font-size:15px;">確認送出報班</button>
+      </div>
+      <button class="btn btn-outline" onclick="goBack()" style="width:100%;justify-content:center;margin-top:10px;">← 返回主頁</button>
+    </div>
+    <div id="staff-success" style="display:none">
+      <div class="card">
+        <div class="success-box">
+          <div class="success-circle">✓</div>
+          <div class="success-title">報班送出成功！</div>
+          <div class="success-sub" id="success-detail"></div>
+          <p style="margin-top:10px;font-size:13px;color:var(--muted);">管理師審核通過後，將發送 LINE 通知給您</p>
+          <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap;">
+            <button class="btn btn-outline" onclick="resetStaff()">再次報班</button>
+            <button class="btn btn-outline" onclick="goBack()">← 返回主頁</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 管理後台 -->
+  <div id="pg-admin" class="page">
+    <div id="admin-lock" class="card" style="max-width:380px;margin:60px auto;">
+      <div class="card-title">🔐 管理師登入</div>
+      <div class="form-group" style="margin-bottom:13px;"><label>管理密碼</label>
+        <input type="password" id="admin-pw" placeholder="請輸入管理密碼" onkeydown="if(event.key==='Enter')checkAdminPw()">
+      </div>
+      <button class="btn btn-primary" onclick="checkAdminPw()" style="width:100%;justify-content:center;">登入後台</button>
+    </div>
+    <div id="admin-panel" style="display:none">
+      <div class="stats">
+        <div class="stat"><div class="stat-n" id="s-total">—</div><div class="stat-l">總報班</div></div>
+        <div class="stat"><div class="stat-n" id="s-pending">—</div><div class="stat-l">待審核</div></div>
+        <div class="stat"><div class="stat-n" id="s-approved">—</div><div class="stat-l">已通過</div></div>
+        <div class="stat"><div class="stat-n" id="s-day">—</div><div class="stat-l">日班人數</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <span>📅 報班審核</span>
+          <div style="display:flex;gap:7px;align-items:center;">
+            <div id="admin-sync" class="sync-st"></div>
+            <button class="btn btn-outline btn-sm" onclick="openAddModal()">＋ 補登</button>
+            <button class="btn btn-outline btn-sm" onclick="loadRecords()">↻ 重新整理</button>
+          </div>
+        </div>
+        <div class="dtabs" id="dtabs"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>#</th><th>工號</th><th>姓名</th><th>班別</th><th>日期</th><th>備註</th><th>狀態</th><th>操作</th></tr></thead>
+            <tbody id="admin-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 員工資料庫 -->
+  <div id="pg-emp" class="page">
+    <div id="emp-panel">
+      <div class="card">
+        <div class="card-title">➕ 新增／更新員工</div>
+        <div class="form-row-3">
+          <div class="form-group"><label>工號</label><input type="text" id="e-empid" placeholder="Z082"></div>
+          <div class="form-group"><label>姓名</label><input type="text" id="e-name" placeholder="王小明"></div>
+          <div class="form-group"><label>LINE User ID（選填）</label><input type="text" id="e-lineid" placeholder="U 開頭的 32 碼"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="saveEmployee()">儲存員工</button>
+          <button class="btn btn-outline" onclick="showLineHelp()">📱 如何取得 LINE ID？</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between;">
+          <span>👥 員工名單</span>
+          <span id="emp-sync" class="sync-st"></span>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>工號</th><th>姓名</th><th>LINE User ID</th><th>LINE狀態</th><th>操作</th></tr></thead>
+            <tbody id="emp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 匯出 -->
+  <div id="pg-export" class="page">
+    <div id="export-panel">
+      <div class="card">
+        <div class="card-title">📤 匯出雙葉名單</div>
+        <div class="form-row">
+          <div class="form-group"><label>日期</label><input type="date" id="ex-date" onchange="previewExport()"></div>
+          <div class="form-group"><label>班別</label>
+            <select id="ex-shift" onchange="previewExport()"><option value="日班">日班</option><option value="晚班">晚班</option></select>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-gold" onclick="doExport()">⬇ 下載 Excel</button>
+          <button class="btn btn-outline" onclick="previewExport()">👁 預覽</button>
+        </div>
+      </div>
+      <div class="card" id="preview-card" style="display:none">
+        <div class="card-title">👁 預覽格式</div>
+        <div class="tbl-wrap" id="preview-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修改密碼 -->
+  <div id="pg-pw" class="page">
+    <div class="card" style="max-width:420px;margin:0 auto;">
+      <div class="card-title">🔑 修改管理密碼</div>
+      <div class="form-group" style="margin-bottom:13px;">
+        <label>目前密碼</label>
+        <input type="password" id="pw-old" placeholder="請輸入目前密碼">
+      </div>
+      <div class="form-group" style="margin-bottom:13px;">
+        <label>新密碼</label>
+        <input type="password" id="pw-new" placeholder="請輸入新密碼（至少6碼）">
+      </div>
+      <div class="form-group" style="margin-bottom:18px;">
+        <label>確認新密碼</label>
+        <input type="password" id="pw-confirm" placeholder="再次輸入新密碼">
+      </div>
+      <button class="btn btn-primary" onclick="changePw()" style="width:100%;justify-content:center;">確認修改密碼</button>
+    </div>
+  </div>
+
+  <!-- 員工履歷查詢 -->
+  <div id="pg-resume" class="page">
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <span>📄 員工履歷查詢</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="resume-search" placeholder="搜尋姓名或工號…"
+            oninput="filterResume()"
+            style="border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;font-size:13px;font-family:inherit;background:var(--bg);width:180px;">
+          <button class="btn btn-outline btn-sm" onclick="loadResumeList()">↻ 重新整理</button>
+        </div>
+      </div>
+      <div id="resume-sync" class="sync-st"></div>
+      <div class="tbl-wrap" style="margin-top:12px;">
+        <table>
+          <thead><tr><th>工號</th><th>姓名</th><th>電話</th><th>填寫時間</th><th>LINE</th><th>操作</th></tr></thead>
+          <tbody id="resume-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 補登 Modal -->
+<div class="modal-bd" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">補登報班</div>
+    <div class="form-row">
+      <div class="form-group"><label>工號</label><input type="text" id="m-empid" placeholder="Z082" oninput="modalAcFill()"></div>
+      <div class="form-group"><label>姓名</label><input type="text" id="m-name"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>日期</label><input type="date" id="m-date"></div>
+      <div class="form-group"><label>班別</label><select id="m-shift"><option value="日班">日班</option><option value="晚班">晚班</option></select></div>
+    </div>
+    <div class="form-group" style="margin-bottom:4px"><label>備註</label><input type="text" id="m-note" placeholder="選填"></div>
+    <div class="modal-acts">
+      <button class="btn btn-outline" onclick="closeModal('add-modal')">取消</button>
+      <button class="btn btn-primary" onclick="addFromModal()">確認新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- LINE Help Modal -->
+<div class="modal-bd" id="line-modal">
+  <div class="modal">
+    <div class="modal-title">📱 如何取得員工的 LINE User ID</div>
+    <div style="font-size:13px;line-height:1.9;color:#444;">
+      <p style="margin-bottom:10px;"><strong>步驟：</strong></p>
+      <ol style="margin-left:18px;margin-bottom:12px;">
+        <li>讓員工掃描 LINE Bot QR Code 加好友</li>
+        <li>員工傳送任意訊息給 Bot</li>
+        <li>到 LINE Developers 控制台 → Messaging API → Webhook 查看收到的 userId</li>
+        <li>或設定 Webhook 自動回覆 User ID 給員工</li>
+      </ol>
+      <div style="background:#f0f8ff;border-radius:8px;padding:12px;font-size:12px;color:#555;">
+        💡 Bot QR Code 在 LINE Developers → 您的 Channel → Messaging API 分頁，分享給員工掃描加好友。User ID 格式為 U 開頭的 32 碼英數字。
+      </div>
+    </div>
+    <div class="modal-acts"><button class="btn btn-primary" onclick="closeModal('line-modal')">了解</button></div>
+  </div>
+</div>
+
+<!-- 員工履歷詳細 Modal -->
+<div class="modal-bd" id="resume-modal">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-title" id="resume-modal-title">員工履歷</div>
+    <div id="resume-modal-body" style="font-size:13px;line-height:2;"></div>
+    <div class="modal-acts">
+      <button class="btn btn-outline" onclick="closeModal('resume-modal')">關閉</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const MAKE_WEBHOOK = 'https://hook.us2.make.com/llcib8qu6e0cjvgmandx2a9vozuakps9';
+let ADMIN_PW = localStorage.getItem('houjia_admin_pw') || 'admin888';
+
+let allRecords = [], allEmployees = [], activeDateTab = null;
+let unlocked = { admin: false, emp: false, export: false };
+
+// DB Ready
+document.addEventListener('db-ready', async () => {
+  document.getElementById('db-overlay').classList.add('hidden');
+  document.getElementById('landing').style.display = 'flex';
+  allEmployees = await dbGetAll('employees').catch(() => []);
+});
+setTimeout(() => { if (!window._dbReady) document.getElementById('db-overlay').innerHTML = '<p style="color:#f99;padding:20px">⚠ 資料庫連線失敗</p>'; }, 8000);
+
+// DB helpers
+const col = (n) => window._fns.collection(n);
+function twNow() {
+  return new Date().toLocaleString('zh-TW', {timeZone:'Asia/Taipei', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false}).replace(/\//g,'-');
+}
+async function dbAdd(c, data) { return await window._fns.addDoc(col(c), { ...data, createdAt: twNow() }); }
+async function dbGetAll(c) {
+  const { getDocs, query, orderBy } = window._fns;
+  const snap = await getDocs(query(col(c), orderBy('createdAt','asc')));
+  return snap.docs.map(d => ({ ...d.data(), _id: d.id }));
+}
+async function dbUpdate(c, id, data) { return await window._fns.updateDoc(window._fns.doc(window._db, c, id), data); }
+async function dbDelete(c, id) { return await window._fns.deleteDoc(window._fns.doc(window._db, c, id)); }
+
+// Helpers
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function fmtDate(ds) {
+  if (!ds) return '';
+  const d = new Date(ds+'T00:00:00'), w=['日','一','二','三','四','五','六'];
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}（${w[d.getDay()]}）`;
+}
+function toast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = err ? 'var(--danger)' : 'var(--navy)';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000);
+}
+function setSS(id, state, msg) {
+  const el = document.getElementById(id); if (!el) return;
+  if (state==='loading') { el.style.display='inline-flex'; el.innerHTML=`<div class="spin"></div> ${msg||'處理中…'}`; }
+  else if (state==='done') { el.style.display='inline-flex'; el.innerHTML=`<span style="color:var(--success)">✓</span> ${msg||'完成'}`; setTimeout(()=>el.style.display='none',2500); }
+  else if (state==='err') { el.style.display='inline-flex'; el.innerHTML=`<span style="color:var(--danger)">✗</span> ${msg||'失敗'}`; }
+  else { el.style.display='none'; }
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function showLineHelp() { document.getElementById('line-modal').classList.add('open'); }
+
+// Role / Nav
+function enterRole(role) {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('role-label').textContent = role==='staff' ? '員工報班' : '管理師後台';
+  const nav = document.getElementById('main-nav');
+  if (role==='staff') {
+    nav.innerHTML = '';
+    document.getElementById('s-date').value = todayStr();
+    showPage('pg-staff');
+  } else {
+    nav.innerHTML = `
+      <button class="active" onclick="showPage('pg-admin',this)">報班審核</button>
+      <button onclick="showPage('pg-emp',this)">員工資料庫</button>
+      <button onclick="showPage('pg-resume',this)">📄 員工履歷</button>
+      <button onclick="showPage('pg-export',this)">匯出名單</button>
+      <button onclick="showPage('pg-pw',this)">🔑 修改密碼</button>
+      <button onclick="adminLogout()" style="color:rgba(255,255,255,.35)">登出</button>`;
+    // 未登入時先顯示登入頁
+    if (!unlocked.admin) {
+      showPage('pg-admin');
+    } else {
+      showPage('pg-admin');
+      loadRecords();
+    }
+  }
+}
+function goBack() { document.getElementById('landing').style.display='flex'; document.getElementById('app').style.display='none'; }
+function adminLogout() {
+  unlocked.admin = false;
+  document.getElementById('admin-lock').style.display = 'block';
+  document.getElementById('admin-panel').style.display = 'none';
+  document.getElementById('admin-pw').value = '';
+  goBack();
+}
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (btn) { document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+  // 管理師頁面若未登入則跳回登入頁
+  if (['pg-emp','pg-export','pg-pw','pg-resume'].includes(id) && !unlocked.admin) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('pg-admin').classList.add('active');
+    toast('⚠ 請先登入管理師後台', true); return;
+  }
+  if (id==='pg-export') { setDefaultExportDate(); previewExport(); }
+  if (id==='pg-emp') loadEmpUI();
+  if (id==='pg-resume') loadResumeList();
+}
+
+// Auth - 單一密碼登入，解鎖所有管理功能
+function checkAdminPw() {
+  const pw = document.getElementById('admin-pw').value;
+  if (pw === ADMIN_PW) {
+    unlocked.admin = true;
+    unlocked.emp = true;
+    unlocked.export = true;
+    document.getElementById('admin-lock').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    loadRecords();
+    toast('✓ 登入成功！');
+  } else { toast('⚠ 密碼錯誤', true); }
+}
+
+// 修改密碼（儲存在 localStorage）
+function changePw() {
+  const oldPw = document.getElementById('pw-old').value;
+  const newPw = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+  if (oldPw !== ADMIN_PW) { toast('⚠ 目前密碼錯誤', true); return; }
+  if (newPw.length < 6) { toast('⚠ 新密碼至少需要 6 碼', true); return; }
+  if (newPw !== confirm) { toast('⚠ 兩次輸入的密碼不一致', true); return; }
+  ADMIN_PW = newPw;
+  localStorage.setItem('houjia_admin_pw', newPw);
+  document.getElementById('pw-old').value = '';
+  document.getElementById('pw-new').value = '';
+  document.getElementById('pw-confirm').value = '';
+  toast('✓ 密碼已成功修改！');
+}
+
+// Autocomplete
+function acSearch(field) {
+  const val = document.getElementById(`s-${field==='empid'?'empid':'name'}`).value.trim().toUpperCase();
+  const matches = allEmployees.filter(e =>
+    field==='empid' ? e.empid.toUpperCase().includes(val) : e.name.includes(document.getElementById('s-name').value.trim())
+  ).slice(0,6);
+  const list = document.getElementById(`ac-${field}`);
+  if (!val || !matches.length) { list.style.display='none'; return; }
+  list.innerHTML = matches.map(e =>
+    `<div class="ac-item" onclick="acSelect('${e._id}')"><span>${e.name}</span><span class="ac-sub">${e.empid}</span></div>`
+  ).join('');
+  list.style.display = 'block';
+}
+function acSelect(id) {
+  const emp = allEmployees.find(e=>e._id===id); if (!emp) return;
+  document.getElementById('s-empid').value = emp.empid;
+  document.getElementById('s-name').value  = emp.name;
+  document.getElementById('ac-empid').style.display='none';
+  document.getElementById('ac-name').style.display='none';
+  // 顯示身分確認提示
+  document.getElementById('confirm-name').textContent = emp.name;
+  document.getElementById('identity-confirm').style.display = 'block';
+  document.getElementById('shift-fields').style.display = 'none';
+}
+function confirmIdentity(yes) {
+  if (yes) {
+    document.getElementById('identity-confirm').style.display = 'none';
+    document.getElementById('shift-fields').style.display = 'block';
+    document.getElementById('s-date').value = todayStr();
+  } else {
+    // 清空重新輸入
+    document.getElementById('s-empid').value = '';
+    document.getElementById('s-name').value = '';
+    document.getElementById('identity-confirm').style.display = 'none';
+    document.getElementById('shift-fields').style.display = 'none';
+    document.getElementById('s-empid').focus();
+  }
+}
+document.addEventListener('click', e => { if (!e.target.closest('.autocomplete-wrap')) { document.getElementById('ac-empid').style.display='none'; document.getElementById('ac-name').style.display='none'; } });
+function modalAcFill() {
+  const val = document.getElementById('m-empid').value.trim().toUpperCase();
+  const emp = allEmployees.find(e=>e.empid.toUpperCase()===val);
+  if (emp) document.getElementById('m-name').value = emp.name;
+}
+
+// Staff
+async function staffSubmit() {
+  const name=document.getElementById('s-name').value.trim();
+  const empid=document.getElementById('s-empid').value.trim().toUpperCase();
+  const date=document.getElementById('s-date').value;
+  const shift=document.getElementById('s-shift').value;
+  const note=document.getElementById('s-note').value.trim();
+
+  // 姓名、日期、班別為必填；工號選填
+  if (!name||!date||!shift) { toast('⚠ 請填寫姓名、日期及班別',true); return; }
+
+  setSS('staff-sync','loading','確認中…');
+  try {
+    const fresh = await dbGetAll('shifts');
+    // 重複報班判斷：有工號用工號比對，沒工號用姓名比對
+    const dup = empid
+      ? fresh.find(r=>r.empid===empid&&r.date===date&&r.shift===shift)
+      : fresh.find(r=>r.name===name&&r.date===date&&r.shift===shift);
+    if (dup) { setSS('staff-sync','err','重複報班'); toast('⚠ 您今日此班已報班',true); return; }
+
+    setSS('staff-sync','loading','上傳中…');
+    await dbAdd('shifts', {name, empid: empid||'待填入', date, shift, note, status:'pending'});
+    setSS('staff-sync','done','上傳成功');
+    document.getElementById('form-card').style.display='none';
+    document.getElementById('staff-success').style.display='block';
+    document.getElementById('success-detail').innerHTML=
+      `<strong>${name}</strong>${empid ? `（${empid}）` : ''}<br>${fmtDate(date)} ${shift}`;
+  } catch(e) { setSS('staff-sync','err','上傳失敗'); toast('❌ 上傳失敗',true); }
+}
+function resetStaff() {
+  document.getElementById('form-card').style.display='block';
+  document.getElementById('staff-success').style.display='none';
+  ['s-name','s-empid','s-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('s-shift').value='';
+  document.getElementById('s-date').value=todayStr();
+  document.getElementById('identity-confirm').style.display='none';
+  document.getElementById('shift-fields').style.display='none';
+}
+
+// Admin records
+async function loadRecords() {
+  setSS('admin-sync','loading','讀取中…');
+  try { allRecords=await dbGetAll('shifts'); setSS('admin-sync','done',`${allRecords.length} 筆`); renderAdmin(); }
+  catch(e) { setSS('admin-sync','err','讀取失敗'); toast('❌ 讀取失敗',true); }
+}
+function renderAdmin() {
+  const dates=[...new Set(allRecords.map(r=>r.date))].sort().reverse();
+  document.getElementById('s-total').textContent=allRecords.length;
+  document.getElementById('s-pending').textContent=allRecords.filter(r=>r.status==='pending').length;
+  document.getElementById('s-approved').textContent=allRecords.filter(r=>r.status==='approved').length;
+  document.getElementById('s-day').textContent=allRecords.filter(r=>r.shift==='日班').length;
+  const tabs=document.getElementById('dtabs');
+  if (!dates.length) { tabs.innerHTML=''; renderAdminTable([]); return; }
+  if (!activeDateTab||!dates.includes(activeDateTab)) activeDateTab=dates[0];
+  tabs.innerHTML=dates.map(d=>`<button class="dtab ${d===activeDateTab?'active':''}" onclick="selectDate('${d}')">${fmtDate(d)}</button>`).join('');
+  renderAdminTable(allRecords.filter(r=>r.date===activeDateTab));
+}
+function selectDate(d) { activeDateTab=d; renderAdmin(); }
+function renderAdminTable(list) {
+  const tbody=document.getElementById('admin-tbody');
+  if (!list.length) { tbody.innerHTML='<tr><td colspan="8" class="empty">此日期尚無報班</td></tr>'; return; }
+  const sorted=[...list].sort((a,b)=>a.shift!==b.shift?(a.shift==='日班'?-1:1):a.empid.localeCompare(b.empid));
+  tbody.innerHTML=sorted.map((r,i)=>{
+    const sb=r.status==='approved'?'<span class="badge-approved">✓ 通過</span>':r.status==='rejected'?'<span class="badge-rejected">✗ 拒絕</span>':'<span class="badge-pending">待審核</span>';
+    // 所有狀態都顯示完整操作按鈕，可隨時修改
+    const acts=`
+      ${r.status!=='approved'?`<button class="btn-approve" onclick="approveRecord('${r._id}','${r.empid}','${r.name}','${r.date}','${r.shift}')">✓ 通過</button>`:''}
+      ${r.status!=='rejected'?`<button class="btn-reject" onclick="rejectRecord('${r._id}','${r.name}')">✗ 拒絕</button>`:''}
+      ${r.status!=='pending'?`<button class="btn-outline btn-sm" style="padding:3px 8px;font-size:11px" onclick="resetRecord('${r._id}')">↩ 待審</button>`:''}
+      <button class="btn-del" onclick="deleteRecord('${r._id}')">刪除</button>`;
+    return `<tr><td>${i+1}</td><td style="font-family:monospace;font-weight:600">${r.empid}</td><td><strong>${r.name}</strong></td>
+      <td>${r.shift==='日班'?'<span class="badge-day">日班</span>':'<span class="badge-night">晚班</span>'}</td>
+      <td style="color:var(--muted);font-size:11px">${fmtDate(r.date)}</td>
+      <td style="color:var(--muted)">${r.note||'—'}</td><td>${sb}</td><td style="white-space:nowrap">${acts}</td></tr>`;
+  }).join('');
+}
+async function approveRecord(id,empid,name,date,shift) {
+  try {
+    await dbUpdate('shifts',id,{status:'approved'});
+    allRecords=allRecords.map(r=>r._id===id?{...r,status:'approved'}:r);
+    renderAdmin(); toast('✓ 已通過，發送 LINE 通知中…');
+    await sendLine(empid,name,date,shift);
+  } catch(e) { toast('❌ 操作失敗',true); }
+}
+async function rejectRecord(id,name) {
+  if (!confirm(`確定拒絕 ${name} 的報班？`)) return;
+  try {
+    await dbUpdate('shifts',id,{status:'rejected'});
+    allRecords=allRecords.map(r=>r._id===id?{...r,status:'rejected'}:r);
+    renderAdmin(); toast('已拒絕此報班');
+  } catch(e) { toast('❌ 操作失敗',true); }
+}
+async function resetRecord(id) {
+  try {
+    await dbUpdate('shifts',id,{status:'pending'});
+    allRecords=allRecords.map(r=>r._id===id?{...r,status:'pending'}:r);
+    renderAdmin(); toast('已改回待審核');
+  } catch(e) { toast('❌ 操作失敗',true); }
+}
+async function deleteRecord(id) {
+  if (!confirm('確定刪除？')) return;
+  await dbDelete('shifts',id);
+  allRecords=allRecords.filter(r=>r._id!==id);
+  renderAdmin(); toast('✓ 已刪除');
+}
+
+// LINE 通知 via Make.com Webhook（解決 CORS 問題）
+async function sendLine(empid, name, date, shift) {
+  // 先用工號找，找不到再用姓名找
+  const emp = allEmployees.find(e => e.empid === empid && e.empid !== '待填入')
+           || allEmployees.find(e => e.name === name);
+
+  if (!emp) {
+    toast(`⚠ 找不到「${name}」的員工資料，LINE 通知未發送`, true);
+    return;
+  }
+  if (!emp.lineId || emp.lineId.trim() === '') {
+    toast(`⚠ 「${name}」尚未綁定 LINE Bot，LINE 通知未發送（請員工先加 Bot 好友填寫履歷）`, true);
+    return;
+  }
+  try {
+    await fetch(MAKE_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source: 'web',
+        lineId: emp.lineId,
+        name,
+        date: fmtDate(date),
+        shift,
+        message: `【優佳人力報班通知】${name} 您好！您的報班申請已通過。日期：${fmtDate(date)} 班別：${shift}。如有疑問請聯繫管理師。`
+      })
+    });
+    toast(`✓ LINE 通知已發送給 ${name}`);
+  } catch(e) { toast('⚠ LINE 通知發送失敗，請檢查網路', true); }
+}
+
+// Employee DB
+async function loadEmpUI() {
+  setSS('emp-sync','loading','讀取中…');
+  allEmployees=await dbGetAll('employees').catch(()=>[]);
+  setSS('emp-sync','done',`${allEmployees.length} 名員工`);
+  renderEmpTable();
+}
+function renderEmpTable() {
+  const tbody=document.getElementById('emp-tbody');
+  if (!allEmployees.length) { tbody.innerHTML='<tr><td colspan="5" class="empty">尚無員工資料，請新增</td></tr>'; return; }
+  const sorted=[...allEmployees].sort((a,b)=>a.empid.localeCompare(b.empid));
+  tbody.innerHTML=sorted.map(e=>`<tr>
+    <td><strong style="font-family:monospace">${e.empid}</strong></td>
+    <td>${e.name}</td>
+    <td style="font-size:11px;color:var(--muted);font-family:monospace;max-width:180px;overflow:hidden;text-overflow:ellipsis">${e.lineId||'—'}</td>
+    <td>${e.lineId?'<span class="badge-approved">已設定</span>':'<span class="badge-pending">未設定</span>'}</td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="editEmpLine('${e._id}','${e.name}','${e.empid}')">編輯</button>
+      <button class="btn-del" onclick="deleteEmp('${e._id}')">刪除</button>
+    </td>
+  </tr>`).join('');
+}
+async function saveEmployee() {
+  const empid=document.getElementById('e-empid').value.trim().toUpperCase();
+  const name=document.getElementById('e-name').value.trim();
+  const lineId=document.getElementById('e-lineid').value.trim();
+  if (!empid||!name) { toast('⚠ 工號和姓名為必填',true); return; }
+  if (allEmployees.find(e=>e.empid===empid)) { toast('⚠ 此工號已存在',true); return; }
+  setSS('emp-sync','loading','儲存中…');
+  try {
+    await dbAdd('employees',{empid,name,lineId});
+    allEmployees=await dbGetAll('employees');
+    renderEmpTable(); setSS('emp-sync','done','已儲存'); toast('✓ 員工資料已新增');
+    ['e-empid','e-name','e-lineid'].forEach(id=>document.getElementById(id).value='');
+  } catch(e) { setSS('emp-sync','err','失敗'); toast('❌ 儲存失敗',true); }
+}
+function editEmpLine(id,name,empid) {
+  const emp=allEmployees.find(e=>e._id===id);
+  const newId=prompt(`編輯 ${name}（${empid}）的 LINE User ID：`,emp.lineId||'');
+  if (newId===null) return;
+  dbUpdate('employees',id,{lineId:newId.trim()}).then(async()=>{
+    allEmployees=await dbGetAll('employees'); renderEmpTable(); toast('✓ 已更新');
+  });
+}
+async function deleteEmp(id) {
+  if (!confirm('確定刪除此員工？')) return;
+  await dbDelete('employees',id);
+  allEmployees=await dbGetAll('employees'); renderEmpTable(); toast('✓ 已刪除');
+}
+
+// Add modal
+function openAddModal() {
+  document.getElementById('m-date').value=activeDateTab||todayStr();
+  ['m-name','m-empid','m-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('add-modal').classList.add('open');
+}
+async function addFromModal() {
+  const name=document.getElementById('m-name').value.trim(), empid=document.getElementById('m-empid').value.trim().toUpperCase();
+  const date=document.getElementById('m-date').value, shift=document.getElementById('m-shift').value, note=document.getElementById('m-note').value.trim();
+  if (!name||!empid||!date) { toast('⚠ 請填完必填欄位',true); return; }
+  try {
+    await dbAdd('shifts',{name,empid,date,shift,note,status:'approved'});
+    allRecords=await dbGetAll('shifts'); activeDateTab=date;
+    closeModal('add-modal'); renderAdmin(); toast('✓ 補登成功！');
+  } catch(e) { toast('❌ 補登失敗',true); }
+}
+document.querySelectorAll('.modal-bd').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');}));
+
+// Export
+function setDefaultExportDate() { const el=document.getElementById('ex-date'); if(!el.value) el.value=activeDateTab||todayStr(); }
+function getExportList() {
+  const date=document.getElementById('ex-date').value, shift=document.getElementById('ex-shift').value;
+  return allRecords.filter(r=>r.date===date&&r.shift===shift&&r.status!=='rejected').sort((a,b)=>a.empid.localeCompare(b.empid));
+}
+function previewExport() {
+  if (!unlocked.export) return;
+  const list=getExportList(), date=document.getElementById('ex-date').value, shift=document.getElementById('ex-shift').value;
+  const card=document.getElementById('preview-card'), wrap=document.getElementById('preview-wrap');
+  card.style.display='block';
+  if (!list.length) { wrap.innerHTML='<div class="empty">此日期／班別尚無資料</div>'; return; }
+  const title=`${fmtDate(date)} 雙葉 ${shift} 人員`;
+  let html=`<table class="preview-tbl"><tr class="ph"><td colspan="6">${title}</td></tr><tr class="pc"><td>編號</td><td>工號</td><td>姓名</td><td>下午</td><td>晚間</td><td>備註</td></tr>`;
+  list.forEach((r,i)=>{ html+=`<tr class="pd"><td>${i+1}</td><td>${r.empid}</td><td>${r.name}</td><td></td><td></td><td>${r.note||''}</td></tr>`; });
+  wrap.innerHTML=html+'</table>';
+}
+function doExport() {
+  const list=getExportList(), date=document.getElementById('ex-date').value, shift=document.getElementById('ex-shift').value;
+  if (!list.length) { toast('⚠ 無資料可匯出',true); return; }
+  const wb=XLSX.utils.book_new(), title=`${fmtDate(date)} 雙葉 ${shift} 人員`;
+  const aoa=[[title,'','','','',''],['編號','工號','姓名','下午','晚間','備註'],...list.map((r,i)=>[i+1,r.empid,r.name,'','',r.note||''])];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=[{wch:6},{wch:10},{wch:12},{wch:8},{wch:8},{wch:20}];
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}}];
+  XLSX.utils.book_append_sheet(wb,ws,shift);
+  XLSX.writeFile(wb,`雙葉${shift}人員_${date.replace(/-/g,'')}.xlsx`);
+  toast('✓ Excel 已下載！');
+}
+
+// ── 員工履歷 ──────────────────────────────────────
+let allResumes = [];
+async function loadResumeList() {
+  setSS('resume-sync','loading','讀取履歷資料…');
+  try {
+    allResumes = await dbGetAll('employees');
+    setSS('resume-sync','done',`共 ${allResumes.length} 筆`);
+    renderResumeTable(allResumes);
+  } catch(e) { setSS('resume-sync','err','讀取失敗'); }
+}
+
+function filterResume() {
+  const q = document.getElementById('resume-search').value.trim().toLowerCase();
+  if (!q) { renderResumeTable(allResumes); return; }
+  renderResumeTable(allResumes.filter(r =>
+    (r.name||'').includes(q) || (r.empid||'').toLowerCase().includes(q) || (r.phone||'').includes(q)
+  ));
+}
+
+function renderResumeTable(list) {
+  const tbody = document.getElementById('resume-tbody');
+  if (!list.length) { tbody.innerHTML='<tr><td colspan="6" class="empty">尚無履歷資料</td></tr>'; return; }
+  const sorted = [...list].sort((a,b)=>(a.empid||'').localeCompare(b.empid||''));
+  tbody.innerHTML = sorted.map(r => {
+    const dt = r.createdAt ? r.createdAt.slice(0,10) : '—';
+    return `<tr>
+      <td style="font-family:monospace;font-weight:600">${r.empid||'<span style="color:var(--muted)">未填</span>'}</td>
+      <td><strong>${r.name||'—'}</strong></td>
+      <td>${r.phone||'—'}</td>
+      <td style="color:var(--muted);font-size:12px">${dt}</td>
+      <td>${r.lineId?'<span class="badge-approved">已綁定</span>':'<span class="badge-pending">未綁定</span>'}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="showResumeDetail('${r._id}')">查看履歷</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function showResumeDetail(id) {
+  const r = allResumes.find(e=>e._id===id); if (!r) return;
+  document.getElementById('resume-modal-title').textContent = `📄 ${r.name||'—'}（${r.empid||'工號未填'}）的履歷`;
+
+  function row(label, val) {
+    return `<tr><td style="color:var(--muted);font-size:12px;padding:5px 12px 5px 0;white-space:nowrap;vertical-align:top;width:100px">${label}</td>
+      <td style="padding:5px 0;border-bottom:1px solid var(--border);font-size:13px">${val||'—'}</td></tr>`;
+  }
+  function rowEdit(label, val, fieldKey, docId) {
+    const display = val || '<span style="color:var(--danger);font-size:12px">⚠ 未填寫</span>';
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px;padding:5px 12px 5px 0;white-space:nowrap;vertical-align:top;width:100px">${label}</td>
+      <td style="padding:5px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span id="rv-${fieldKey}">${display}</span>
+          <button class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:11px;"
+            onclick="editResumeField('${docId}','${fieldKey}','${val||''}')">編輯</button>
+        </div>
+      </td></tr>`;
+  }
+  function sec(title) {
+    return `<tr><td colspan="2" style="padding:12px 0 4px;font-weight:700;font-size:13px;color:var(--navy);border-bottom:2px solid var(--gold-lt)">${title}</td></tr>`;
+  }
+
+  const html = `<table style="width:100%;border-collapse:collapse;">
+    ${sec('基本資料')}
+    ${row('姓名', r.name)}
+    ${rowEdit('工號', r.empid, 'empid', r._id)}
+    ${row('身分證', r.idno)}
+    ${row('出生日期', r.birth)}
+    ${row('戶籍地址', r.addr1)}
+    ${row('居住地址', r.addr2||'（同戶籍）')}
+    ${sec('聯絡資訊')}
+    ${row('手機', r.phone)}
+    ${row('備用電話', r.phone2)}
+    ${row('緊急聯絡人', r.ecName ? `${r.ecName}（${r.ecRel||''}）${r.ecPhone||''}` : '—')}
+    ${sec('銀行帳號')}
+    ${row('銀行', [r.bankName, r.bankBranch].filter(Boolean).join(' '))}
+    ${row('代碼', r.bankCode)}
+    ${row('帳號', r.bankAccount)}
+    ${row('戶名', r.bankHolder)}
+    ${sec('學歷技能')}
+    ${row('學歷', [r.eduLevel, r.eduSchool, r.eduDept].filter(Boolean).join(' '))}
+    ${row('專長技能', r.skills)}
+    ${row('工作經歷', r.experience)}
+    ${row('其他說明', r.notes)}
+    ${sec('系統資訊')}
+    ${row('LINE ID', r.lineId||'未綁定')}
+    ${row('填寫時間', r.createdAt ? r.createdAt.slice(0,19).replace('T',' ') : '—')}
+  </table>`;
+
+  document.getElementById('resume-modal-body').innerHTML = html;
+  document.getElementById('resume-modal').classList.add('open');
+}
+
+async function editResumeField(docId, field, currentVal) {
+  const newVal = prompt(`請輸入新的工號：`, currentVal);
+  if (newVal === null) return; // 取消
+  const trimmed = newVal.trim().toUpperCase();
+  if (!trimmed) { toast('⚠ 工號不可為空', true); return; }
+  try {
+    await dbUpdate('employees', docId, { [field]: trimmed });
+    // 更新本地資料
+    const idx = allResumes.findIndex(r=>r._id===docId);
+    if (idx !== -1) allResumes[idx][field] = trimmed;
+    // 更新畫面上的顯示
+    const el = document.getElementById(`rv-${field}`);
+    if (el) el.textContent = trimmed;
+    // 更新 modal 標題
+    const r = allResumes.find(r=>r._id===docId);
+    if (r) document.getElementById('resume-modal-title').textContent = `📄 ${r.name||'—'}（${r.empid||'工號未填'}）的履歷`;
+    // 更新履歷列表
+    renderResumeTable(allResumes);
+    // 同步更新員工名單
+    allEmployees = await dbGetAll('employees').catch(()=>allEmployees);
+    toast('✓ 工號已更新！');
+  } catch(e) { toast('❌ 更新失敗', true); }
+}
+</script>
+</body>
+</html>
