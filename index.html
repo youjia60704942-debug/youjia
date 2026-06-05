@@ -441,7 +441,7 @@ function twNow() {
 async function dbAdd(c, data) { return await window._fns.addDoc(col(c), { ...data, createdAt: twNow() }); }
 async function dbGetAll(c) {
   const { getDocs, query, orderBy } = window._fns;
-  const snap = await getDocs(query(col(c), orderBy('createdAt','asc')));
+  const snap = await getDocs(query(col(c), orderBy('createdAt','desc')));
   return snap.docs.map(d => ({ ...d.data(), _id: d.id }));
 }
 async function dbUpdate(c, id, data) { return await window._fns.updateDoc(window._fns.doc(window._db, c, id), data); }
