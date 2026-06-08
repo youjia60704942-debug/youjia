@@ -641,11 +641,10 @@ async function gasGet(params) {
   return res.json();
 }
 async function gasPost(body) {
-  const res = await fetch(GAS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  // 用 GET + URL 參數，Apps Script GET 沒有 CORS 問題
+  const params = { ...body };
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`${GAS_URL}?${qs}`, { redirect: 'follow' });
   return res.json();
 }
 
