@@ -461,15 +461,28 @@ let ADMIN_PW = localStorage.getItem('houjia_admin_pw') || 'admin888';
 let allRecords = [], allEmployees = [], activeDateTab = null;
 let unlocked = { admin: false, emp: false, export: false };
 
-// DB Ready
-document.addEventListener('db-ready', async () => {
+// DB Ready — 同時監聽事件與輪詢，避免模組載入時序問題
+let _dbInitDone = false;
+async function onDbReady() {
+  if (_dbInitDone) return;
+  _dbInitDone = true;
   document.getElementById('db-overlay').classList.add('hidden');
   document.getElementById('landing').style.display = 'flex';
   allEmployees = await dbGetAll('employees').catch(() => []);
   allClients   = await dbGetAll('clients').catch(() => []);
   refreshClientSelects();
-});
-setTimeout(() => { if (!window._dbReady) document.getElementById('db-overlay').innerHTML = '<p style="color:#f99;padding:20px">⚠ 資料庫連線失敗</p>'; }, 8000);
+}
+document.addEventListener('db-ready', onDbReady);
+(function waitDb() {
+  if (window._dbReady) { onDbReady(); return; }
+  setTimeout(waitDb, 100);
+})();
+setTimeout(() => {
+  if (!window._dbReady) {
+    document.getElementById('db-overlay').innerHTML =
+      '<p style="color:#f99;padding:20px;text-align:center">⚠ 資料庫連線失敗<br><small>請重新整理頁面</small></p>';
+  }
+}, 10000);
 
 // DB helpers
 const col = (n) => window._fns.collection(n);
