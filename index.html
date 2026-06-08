@@ -177,19 +177,19 @@ tr:hover td{background:rgba(201,168,76,.04);}
   <div id="pg-staff" class="page">
     <div class="card" id="form-card">
       <div class="card-title">📋 個人報班登記</div>
-      <div class="info-box">💡 輸入工號或姓名，系統會自動帶入您的資料</div>
+      <div class="info-box">💡 請輸入工號後按 Enter 或點「查詢」帶入資料</div>
       <div class="form-row">
         <div class="form-group"><label>工號</label>
-          <div class="autocomplete-wrap">
-            <input type="text" id="s-empid" placeholder="工號（選填，不知道可留空）" oninput="acSearch('empid')" autocomplete="off">
-            <div class="ac-list" id="ac-empid" style="display:none"></div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="s-empid" placeholder="輸入工號後按 Enter" autocomplete="off"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();lookupByEmpid();}"
+              style="flex:1;">
+            <button class="btn btn-outline" onclick="lookupByEmpid()" style="padding:12px 14px;white-space:nowrap;">查詢</button>
           </div>
         </div>
         <div class="form-group"><label>姓名</label>
-          <div class="autocomplete-wrap">
-            <input type="text" id="s-name" placeholder="輸入姓名" oninput="acSearch('name')" autocomplete="off">
-            <div class="ac-list" id="ac-name" style="display:none"></div>
-          </div>
+          <input type="text" id="s-name" placeholder="由工號自動帶入" autocomplete="off" readonly
+            style="background:#f8f8f8;color:var(--muted);">
         </div>
       </div>
 
@@ -206,6 +206,11 @@ tr:hover td{background:rgba(201,168,76,.04);}
       <div id="shift-fields" style="display:none">
         <div class="form-row">
           <div class="form-group"><label>報班日期</label><input type="date" id="s-date"></div>
+          <div class="form-group"><label>派工客戶</label>
+            <select id="s-client"><option value="">請選擇客戶</option></select>
+          </div>
+        </div>
+        <div class="form-row">
           <div class="form-group"><label>班別</label>
             <select id="s-shift"><option value="">請選擇</option><option value="日班">日班</option><option value="晚班">晚班</option></select>
           </div>
@@ -268,6 +273,32 @@ tr:hover td{background:rgba(201,168,76,.04);}
     </div>
   </div>
 
+  <!-- 客戶管理 -->
+  <div id="pg-client" class="page">
+    <div id="client-panel">
+      <div class="card">
+        <div class="card-title">🏭 新增客戶</div>
+        <div class="form-row">
+          <div class="form-group"><label>客戶名稱</label><input type="text" id="c-name" placeholder="例：雙葉、台積電…"></div>
+          <div class="form-group"><label>備註（選填）</label><input type="text" id="c-note" placeholder="地址、聯絡人…"></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveClient()">新增客戶</button>
+      </div>
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between;">
+          <span>🏭 客戶清單</span>
+          <span id="client-sync" class="sync-st"></span>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>#</th><th>客戶名稱</th><th>備註</th><th>新增時間</th><th>操作</th></tr></thead>
+            <tbody id="client-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 員工資料庫 -->
   <div id="pg-emp" class="page">
     <div id="emp-panel">
@@ -302,9 +333,14 @@ tr:hover td{background:rgba(201,168,76,.04);}
   <div id="pg-export" class="page">
     <div id="export-panel">
       <div class="card">
-        <div class="card-title">📤 匯出雙葉名單</div>
+        <div class="card-title">📤 匯出人員名單</div>
         <div class="form-row">
           <div class="form-group"><label>日期</label><input type="date" id="ex-date" onchange="previewExport()"></div>
+          <div class="form-group"><label>派工客戶</label>
+            <select id="ex-client" onchange="previewExport()"><option value="">請選擇客戶</option></select>
+          </div>
+        </div>
+        <div class="form-row">
           <div class="form-group"><label>班別</label>
             <select id="ex-shift" onchange="previewExport()"><option value="日班">日班</option><option value="晚班">晚班</option></select>
           </div>
@@ -430,6 +466,8 @@ document.addEventListener('db-ready', async () => {
   document.getElementById('db-overlay').classList.add('hidden');
   document.getElementById('landing').style.display = 'flex';
   allEmployees = await dbGetAll('employees').catch(() => []);
+  allClients   = await dbGetAll('clients').catch(() => []);
+  refreshClientSelects();
 });
 setTimeout(() => { if (!window._dbReady) document.getElementById('db-overlay').innerHTML = '<p style="color:#f99;padding:20px">⚠ 資料庫連線失敗</p>'; }, 8000);
 
@@ -483,6 +521,7 @@ function enterRole(role) {
     nav.innerHTML = `
       <button class="active" onclick="showPage('pg-admin',this)">報班審核</button>
       <button onclick="showPage('pg-emp',this)">員工資料庫</button>
+      <button onclick="showPage('pg-client',this)">🏭 客戶管理</button>
       <button onclick="showPage('pg-resume',this)">📄 員工履歷</button>
       <button onclick="showPage('pg-export',this)">匯出名單</button>
       <button onclick="showPage('pg-pw',this)">🔑 修改密碼</button>
@@ -509,7 +548,7 @@ function showPage(id, btn) {
   document.getElementById(id).classList.add('active');
   if (btn) { document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
   // 管理師頁面若未登入則跳回登入頁
-  if (['pg-emp','pg-export','pg-pw','pg-resume'].includes(id) && !unlocked.admin) {
+  if (['pg-emp','pg-export','pg-pw','pg-resume','pg-client'].includes(id) && !unlocked.admin) {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.getElementById('pg-admin').classList.add('active');
     toast('⚠ 請先登入管理師後台', true); return;
@@ -517,6 +556,7 @@ function showPage(id, btn) {
   if (id==='pg-export') { setDefaultExportDate(); previewExport(); }
   if (id==='pg-emp') loadEmpUI();
   if (id==='pg-resume') loadResumeList();
+  if (id==='pg-client') loadClientUI();
 }
 
 // Auth - 單一密碼登入，解鎖所有管理功能
@@ -549,31 +589,89 @@ function changePw() {
   toast('✓ 密碼已成功修改！');
 }
 
-// Autocomplete
-function acSearch(field) {
-  const val = document.getElementById(`s-${field==='empid'?'empid':'name'}`).value.trim().toUpperCase();
-  const matches = allEmployees.filter(e =>
-    field==='empid' ? e.empid.toUpperCase().includes(val) : e.name.includes(document.getElementById('s-name').value.trim())
-  ).slice(0,6);
-  const list = document.getElementById(`ac-${field}`);
-  if (!val || !matches.length) { list.style.display='none'; return; }
-  list.innerHTML = matches.map(e =>
-    `<div class="ac-item" onclick="acSelect('${e._id}')"><span>${e.name}</span><span class="ac-sub">${e.empid}</span></div>`
-  ).join('');
-  list.style.display = 'block';
-}
-function acSelect(id) {
-  const emp = allEmployees.find(e=>e._id===id); if (!emp) return;
-  document.getElementById('s-empid').value = emp.empid;
-  document.getElementById('s-name').value  = emp.name;
-  document.getElementById('ac-empid').style.display='none';
-  document.getElementById('ac-name').style.display='none';
-  // 顯示身分確認提示
+// ── 工號查詢（取代舊的 autocomplete） ──────────────────────────
+function lookupByEmpid() {
+  const val = document.getElementById('s-empid').value.trim().toUpperCase();
+  if (!val) { toast('⚠ 請輸入工號', true); return; }
+  const emp = allEmployees.find(e => e.empid && e.empid.toUpperCase() === val);
+  if (!emp) { toast('⚠ 找不到此工號，請確認後重試', true); document.getElementById('s-name').value = ''; return; }
+  document.getElementById('s-name').value = emp.name;
   document.getElementById('confirm-name').textContent = emp.name;
   document.getElementById('identity-confirm').style.display = 'block';
   document.getElementById('shift-fields').style.display = 'none';
 }
-function confirmIdentity(yes) {
+// 保留空的 acSearch 避免舊 HTML 殘留呼叫報錯
+function acSearch() {}
+function acSelect() {}
+function modalAcFill() {
+  const val = document.getElementById('m-empid').value.trim().toUpperCase();
+  const emp = allEmployees.find(e => e.empid && e.empid.toUpperCase() === val);
+  if (emp) document.getElementById('m-name').value = emp.name;
+}
+
+// ── 客戶管理 ──────────────────────────────────────────────────
+let allClients = [];
+
+async function loadClientUI() {
+  setSS('client-sync', 'loading', '讀取中…');
+  allClients = await dbGetAll('clients').catch(() => []);
+  setSS('client-sync', 'done', `${allClients.length} 個客戶`);
+  renderClientTable();
+  refreshClientSelects();
+}
+
+function renderClientTable() {
+  const tbody = document.getElementById('client-tbody');
+  if (!allClients.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">尚無客戶，請新增</td></tr>'; return; }
+  const sorted = [...allClients].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  tbody.innerHTML = sorted.map((c, i) => `<tr>
+    <td>${i + 1}</td>
+    <td><strong>${c.name || '—'}</strong></td>
+    <td style="color:var(--muted);font-size:13px">${c.note || '—'}</td>
+    <td style="color:var(--muted);font-size:12px">${(c.createdAt || '').slice(0, 10) || '—'}</td>
+    <td><button class="btn-del" onclick="deleteClient('${c._id}', '${c.name}')">刪除</button></td>
+  </tr>`).join('');
+}
+
+async function saveClient() {
+  const name = document.getElementById('c-name').value.trim();
+  const note = document.getElementById('c-note').value.trim();
+  if (!name) { toast('⚠ 請輸入客戶名稱', true); return; }
+  if (allClients.find(c => c.name === name)) { toast('⚠ 此客戶已存在', true); return; }
+  setSS('client-sync', 'loading', '儲存中…');
+  try {
+    await dbAdd('clients', { name, note });
+    allClients = await dbGetAll('clients');
+    renderClientTable();
+    refreshClientSelects();
+    setSS('client-sync', 'done', '已儲存');
+    toast('✓ 客戶已新增：' + name);
+    document.getElementById('c-name').value = '';
+    document.getElementById('c-note').value = '';
+  } catch (e) { setSS('client-sync', 'err', '失敗'); toast('❌ 儲存失敗', true); }
+}
+
+async function deleteClient(id, name) {
+  if (!confirm(`確定刪除客戶「${name}」？`)) return;
+  await dbDelete('clients', id);
+  allClients = allClients.filter(c => c._id !== id);
+  renderClientTable();
+  refreshClientSelects();
+  toast('✓ 已刪除');
+}
+
+function refreshClientSelects() {
+  // 報班頁客戶選單
+  const sc = document.getElementById('s-client');
+  const ec = document.getElementById('ex-client');
+  const opts = allClients.length
+    ? allClients.sort((a,b)=>a.name.localeCompare(b.name)).map(c => `<option value="${c.name}">${c.name}</option>`).join('')
+    : '<option value="">尚無客戶（請先至管理後台新增）</option>';
+  if (sc) sc.innerHTML = '<option value="">請選擇客戶</option>' + opts;
+  if (ec) ec.innerHTML = '<option value="">請選擇客戶</option>' + opts;
+}
+
+
   if (yes) {
     document.getElementById('identity-confirm').style.display = 'none';
     document.getElementById('shift-fields').style.display = 'block';
@@ -587,47 +685,65 @@ function confirmIdentity(yes) {
     document.getElementById('s-empid').focus();
   }
 }
-document.addEventListener('click', e => { if (!e.target.closest('.autocomplete-wrap')) { document.getElementById('ac-empid').style.display='none'; document.getElementById('ac-name').style.display='none'; } });
-function modalAcFill() {
-  const val = document.getElementById('m-empid').value.trim().toUpperCase();
-  const emp = allEmployees.find(e=>e.empid.toUpperCase()===val);
-  if (emp) document.getElementById('m-name').value = emp.name;
+document.addEventListener('click', e => {
+  // 舊 ac-empid/ac-name 可能不存在，安全處理
+  const ae = document.getElementById('ac-empid');
+  const an = document.getElementById('ac-name');
+  if (ae) ae.style.display = 'none';
+  if (an) an.style.display = 'none';
+});
+
+function confirmIdentity(yes) {
+  if (yes) {
+    document.getElementById('identity-confirm').style.display = 'none';
+    document.getElementById('shift-fields').style.display = 'block';
+    document.getElementById('s-date').value = todayStr();
+    // 報班頁載入客戶清單
+    refreshClientSelects();
+  } else {
+    document.getElementById('s-empid').value = '';
+    document.getElementById('s-name').value = '';
+    document.getElementById('identity-confirm').style.display = 'none';
+    document.getElementById('shift-fields').style.display = 'none';
+    document.getElementById('s-empid').focus();
+  }
 }
 
-// Staff
+// Staff submit
 async function staffSubmit() {
-  const name=document.getElementById('s-name').value.trim();
-  const empid=document.getElementById('s-empid').value.trim().toUpperCase();
-  const date=document.getElementById('s-date').value;
-  const shift=document.getElementById('s-shift').value;
-  const note=document.getElementById('s-note').value.trim();
+  const name  = document.getElementById('s-name').value.trim();
+  const empid = document.getElementById('s-empid').value.trim().toUpperCase();
+  const date  = document.getElementById('s-date').value;
+  const client= document.getElementById('s-client').value;
+  const shift = document.getElementById('s-shift').value;
+  const note  = document.getElementById('s-note').value.trim();
 
-  // 姓名、日期、班別為必填；工號選填
-  if (!name||!date||!shift) { toast('⚠ 請填寫姓名、日期及班別',true); return; }
+  if (!name || !date || !client || !shift) { toast('⚠ 請填寫日期、客戶及班別', true); return; }
 
-  setSS('staff-sync','loading','確認中…');
+  setSS('staff-sync', 'loading', '確認中…');
   try {
     const fresh = await dbGetAll('shifts');
-    // 重複報班判斷：有工號用工號比對，沒工號用姓名比對
     const dup = empid
-      ? fresh.find(r=>r.empid===empid&&r.date===date&&r.shift===shift)
-      : fresh.find(r=>r.name===name&&r.date===date&&r.shift===shift);
-    if (dup) { setSS('staff-sync','err','重複報班'); toast('⚠ 您今日此班已報班',true); return; }
+      ? fresh.find(r => r.empid === empid && r.date === date && r.shift === shift && r.client === client)
+      : fresh.find(r => r.name === name && r.date === date && r.shift === shift && r.client === client);
+    if (dup) { setSS('staff-sync', 'err', '重複報班'); toast('⚠ 您今日此班已報班', true); return; }
 
-    setSS('staff-sync','loading','上傳中…');
-    await dbAdd('shifts', {name, empid: empid||'待填入', date, shift, note, status:'pending'});
-    setSS('staff-sync','done','上傳成功');
-    document.getElementById('form-card').style.display='none';
-    document.getElementById('staff-success').style.display='block';
-    document.getElementById('success-detail').innerHTML=
-      `<strong>${name}</strong>${empid ? `（${empid}）` : ''}<br>${fmtDate(date)} ${shift}`;
-  } catch(e) { setSS('staff-sync','err','上傳失敗'); toast('❌ 上傳失敗',true); }
+    setSS('staff-sync', 'loading', '上傳中…');
+    await dbAdd('shifts', { name, empid: empid || '待填入', date, client, shift, note, status: 'pending' });
+    setSS('staff-sync', 'done', '上傳成功');
+    document.getElementById('form-card').style.display = 'none';
+    document.getElementById('staff-success').style.display = 'block';
+    document.getElementById('success-detail').innerHTML =
+      `<strong>${name}</strong>${empid ? `（${empid}）` : ''}<br>${fmtDate(date)} ${client} ${shift}`;
+  } catch(e) { setSS('staff-sync', 'err', '上傳失敗'); toast('❌ 上傳失敗', true); }
 }
+
 function resetStaff() {
   document.getElementById('form-card').style.display='block';
   document.getElementById('staff-success').style.display='none';
   ['s-name','s-empid','s-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('s-shift').value='';
+  document.getElementById('s-client').value='';
   document.getElementById('s-date').value=todayStr();
   document.getElementById('identity-confirm').style.display='none';
   document.getElementById('shift-fields').style.display='none';
@@ -802,30 +918,42 @@ document.querySelectorAll('.modal-bd').forEach(m=>m.addEventListener('click',fun
 // Export
 function setDefaultExportDate() { const el=document.getElementById('ex-date'); if(!el.value) el.value=activeDateTab||todayStr(); }
 function getExportList() {
-  const date=document.getElementById('ex-date').value, shift=document.getElementById('ex-shift').value;
-  return allRecords.filter(r=>r.date===date&&r.shift===shift&&r.status!=='rejected').sort((a,b)=>a.empid.localeCompare(b.empid));
+  const date   = document.getElementById('ex-date').value;
+  const client = document.getElementById('ex-client').value;
+  const shift  = document.getElementById('ex-shift').value;
+  return allRecords.filter(r => r.date === date && (client ? r.client === client : true) && r.shift === shift && r.status !== 'rejected')
+    .sort((a, b) => a.empid.localeCompare(b.empid));
 }
 function previewExport() {
   if (!unlocked.export) return;
-  const list=getExportList(), date=document.getElementById('ex-date').value, shift=document.getElementById('ex-shift').value;
-  const card=document.getElementById('preview-card'), wrap=document.getElementById('preview-wrap');
-  card.style.display='block';
-  if (!list.length) { wrap.innerHTML='<div class="empty">此日期／班別尚無資料</div>'; return; }
-  const title=`${fmtDate(date)} 雙葉 ${shift} 人員`;
-  let html=`<table class="preview-tbl"><tr class="ph"><td colspan="6">${title}</td></tr><tr class="pc"><td>編號</td><td>工號</td><td>姓名</td><td>下午</td><td>晚間</td><td>備註</td></tr>`;
-  list.forEach((r,i)=>{ html+=`<tr class="pd"><td>${i+1}</td><td>${r.empid}</td><td>${r.name}</td><td></td><td></td><td>${r.note||''}</td></tr>`; });
-  wrap.innerHTML=html+'</table>';
+  const list   = getExportList();
+  const date   = document.getElementById('ex-date').value;
+  const client = document.getElementById('ex-client').value || '（未選客戶）';
+  const shift  = document.getElementById('ex-shift').value;
+  const card   = document.getElementById('preview-card');
+  const wrap   = document.getElementById('preview-wrap');
+  card.style.display = 'block';
+  if (!list.length) { wrap.innerHTML = '<div class="empty">此條件尚無資料</div>'; return; }
+  const title = `${fmtDate(date)} ${client} ${shift} 人員`;
+  let html = `<table class="preview-tbl"><tr class="ph"><td colspan="6">${title}</td></tr><tr class="pc"><td>編號</td><td>工號</td><td>姓名</td><td>下午</td><td>晚間</td><td>備註</td></tr>`;
+  list.forEach((r, i) => { html += `<tr class="pd"><td>${i+1}</td><td>${r.empid}</td><td>${r.name}</td><td></td><td></td><td>${r.note||''}</td></tr>`; });
+  wrap.innerHTML = html + '</table>';
 }
 function doExport() {
-  const list=getExportList(), date=document.getElementById('ex-date').value, shift=document.getElementById('ex-shift').value;
-  if (!list.length) { toast('⚠ 無資料可匯出',true); return; }
-  const wb=XLSX.utils.book_new(), title=`${fmtDate(date)} 雙葉 ${shift} 人員`;
-  const aoa=[[title,'','','','',''],['編號','工號','姓名','下午','晚間','備註'],...list.map((r,i)=>[i+1,r.empid,r.name,'','',r.note||''])];
-  const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=[{wch:6},{wch:10},{wch:12},{wch:8},{wch:8},{wch:20}];
-  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}}];
-  XLSX.utils.book_append_sheet(wb,ws,shift);
-  XLSX.writeFile(wb,`雙葉${shift}人員_${date.replace(/-/g,'')}.xlsx`);
+  const list   = getExportList();
+  const date   = document.getElementById('ex-date').value;
+  const client = document.getElementById('ex-client').value || '未選客戶';
+  const shift  = document.getElementById('ex-shift').value;
+  if (!list.length) { toast('⚠ 無資料可匯出', true); return; }
+  const wb    = XLSX.utils.book_new();
+  const title = `${fmtDate(date)} ${client} ${shift} 人員`;
+  const aoa   = [[title,'','','','',''],[' 編號','工號','姓名','下午','晚間','備註'],
+    ...list.map((r, i) => [i+1, r.empid, r.name, '', '', r.note||''])];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:6},{wch:10},{wch:12},{wch:8},{wch:8},{wch:20}];
+  ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:5}}];
+  XLSX.utils.book_append_sheet(wb, ws, shift);
+  XLSX.writeFile(wb, `${client}${shift}人員_${date.replace(/-/g,'')}.xlsx`);
   toast('✓ Excel 已下載！');
 }
 
