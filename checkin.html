@@ -373,8 +373,17 @@
     <div class="user-avatar" id="userAvatar">👤</div>
     <div class="user-info">
       <div class="user-name" id="userName">載入中...</div>
-      <div class="user-status" id="clientBadge" style="color:var(--green);font-weight:600;margin-top:2px;">讀取客戶中...</div>
+      <div class="user-status" id="clientBadge" style="color:var(--green);font-weight:600;margin-top:2px;">載入中...</div>
     </div>
+  </div>
+
+  <!-- 地點選單 -->
+  <div class="location-card fade-in" id="client-select-card" style="display:none">
+    <div class="location-label">🏭 選擇派工地點</div>
+    <select id="client-select" onchange="onClientSelect()"
+      style="width:100%;margin-top:10px;padding:12px 14px;border-radius:12px;border:2px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;font-family:inherit;outline:none;cursor:pointer;">
+      <option value="">-- 請選擇地點 --</option>
+    </select>
   </div>
 
   <!-- Location Card -->
@@ -481,11 +490,12 @@ let userId        = '';
 let userName      = '';
 let todayRecord   = null;
 
-// 多地點：由 Apps Script 動態取得（從 ?client= 參數決定）
-let clientName  = '';
-let OFFICE_LAT  = null;
-let OFFICE_LNG  = null;
-let RADIUS      = 100;
+// 多地點：員工自己選擇
+let clientName = '';
+let allClientList = [];
+let OFFICE_LAT = null;
+let OFFICE_LNG = null;
+let RADIUS     = 100;
 
 // ============================================================
 // 初始化
@@ -493,18 +503,6 @@ let RADIUS      = 100;
 async function init() {
   updateClock();
   setInterval(updateClock, 1000);
-
-  // 從網址取得客戶參數
-  const urlParams = new URLSearchParams(window.location.search);
-  clientName = urlParams.get('client') || '';
-
-  if (!clientName) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('main').style.display = 'block';
-    showToast('❌ 缺少客戶參數，請用正確連結開啟', 'error');
-    document.getElementById('locText').textContent = '連結錯誤，請聯繫管理員';
-    return;
-  }
 
   try {
     await liff.init({ liffId: LIFF_ID });
@@ -515,33 +513,15 @@ async function init() {
     userName = profile.displayName;
 
     document.getElementById('userName').textContent    = userName;
-    document.getElementById('userStatus').textContent  = '員工';
-    document.getElementById('clientBadge').textContent = '📍 ' + clientName;
+    document.getElementById('clientBadge').textContent = '請選擇派工地點';
 
     if (profile.pictureUrl) {
       document.getElementById('userAvatar').innerHTML =
         `<img src="${profile.pictureUrl}" alt="avatar">`;
     }
 
-    // 從 Apps Script 取得客戶座標
-    const res  = await fetch(`${APPS_SCRIPT_URL}?action=get_client&client=${encodeURIComponent(clientName)}`);
-    const data = await res.json();
-
-    if (!data.found) {
-      showToast('❌ 找不到客戶「' + clientName + '」的座標設定，請聯繫管理員', 'error');
-      document.getElementById('locText').textContent = '客戶資料未設定';
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('main').style.display = 'block';
-      return;
-    }
-
-    OFFICE_LAT = data.lat;
-    OFFICE_LNG = data.lng;
-    RADIUS     = data.radius || 100;
-
-    document.getElementById('locLabel').textContent = '📍 打卡位置（' + clientName + '）';
-
-    getLocation();
+    // 載入客戶清單
+    await loadClientList();
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('main').style.display = 'block';
@@ -553,6 +533,83 @@ async function init() {
     showToast('初始化失敗：' + err.message, 'error');
     document.getElementById('loading').style.display = 'none';
     document.getElementById('main').style.display = 'block';
+  }
+}
+
+// 載入該員工的派工客戶清單
+async function loadClientList() {
+  try {
+    const res  = await fetch(`${APPS_SCRIPT_URL}?action=get_emp_clients&userId=${encodeURIComponent(userId)}`);
+    const data = await res.json();
+    allClientList = data.clients || [];
+
+    const sel = document.getElementById('client-select');
+
+    if (!allClientList.length) {
+      sel.innerHTML = '<option value="">（尚未設定派工地點，請聯繫管理員）</option>';
+      document.getElementById('client-select-card').style.display = 'block';
+      showToast('⚠️ 尚未設定派工地點', 'error');
+      return;
+    }
+
+    // 只有一個地點時自動選取
+    if (allClientList.length === 1) {
+      sel.innerHTML = `<option value="${allClientList[0].name}">${allClientList[0].name}</option>`;
+      document.getElementById('client-select-card').style.display = 'block';
+      sel.value = allClientList[0].name;
+      await onClientSelect();
+    } else {
+      sel.innerHTML = '<option value="">-- 請選擇派工地點 --</option>' +
+        allClientList.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      document.getElementById('client-select-card').style.display = 'block';
+    }
+  } catch(err) {
+    showToast('❌ 無法載入地點清單', 'error');
+  }
+}
+
+// 員工選擇地點
+async function onClientSelect() {
+  const sel  = document.getElementById('client-select');
+  const name = sel.value;
+  if (!name) {
+    clientName = '';
+    OFFICE_LAT = null; OFFICE_LNG = null; RADIUS = 100;
+    document.getElementById('clientBadge').textContent = '請選擇派工地點';
+    document.getElementById('locLabel').textContent = '📍 打卡位置';
+    document.getElementById('locText').textContent  = '請先選擇地點';
+    document.getElementById('locDot').className     = 'location-dot';
+    document.getElementById('locDist').textContent  = '';
+    inRange = false; updateButtons();
+    return;
+  }
+
+  clientName = name;
+  document.getElementById('clientBadge').textContent = '📍 ' + clientName;
+  document.getElementById('locLabel').textContent    = '📍 打卡位置（' + clientName + '）';
+  document.getElementById('locText').textContent     = '讀取座標中…';
+
+  try {
+    const res  = await fetch(`${APPS_SCRIPT_URL}?action=get_client&client=${encodeURIComponent(clientName)}`);
+    const data = await res.json();
+    if (!data.found) {
+      showToast('❌ 此地點座標未設定，請聯繫管理員', 'error');
+      document.getElementById('locText').textContent = '座標未設定';
+      return;
+    }
+    OFFICE_LAT = data.lat;
+    OFFICE_LNG = data.lng;
+    RADIUS     = data.radius || 100;
+    // 重新計算距離
+    if (userLocation) {
+      distance = calcDistance(userLocation.lat, userLocation.lng, OFFICE_LAT, OFFICE_LNG);
+      inRange  = distance <= RADIUS;
+      updateLocationUI();
+    } else {
+      getLocation();
+    }
+  } catch(err) {
+    showToast('❌ 讀取座標失敗', 'error');
   }
 }
 
@@ -626,7 +683,7 @@ function updateButtons() {
   const btnIn  = document.getElementById('btnIn');
   const btnOut = document.getElementById('btnOut');
 
-  if (inRange) {
+  if (inRange && clientName) {
     btnIn.disabled  = false;
     btnOut.disabled = false;
   } else {
@@ -643,6 +700,10 @@ let surveyAnswers = { lunch: null, rest: null };
 let hasOvertime = false;
 
 async function punch(type) {
+  if (!clientName) {
+    showToast('⚠️ 請先選擇派工地點', 'error');
+    return;
+  }
   if (!inRange) {
     showToast('⚠️ 不在打卡範圍內', 'error');
     return;

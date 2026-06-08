@@ -332,7 +332,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
         </div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>工號</th><th>姓名</th><th>LINE User ID</th><th>LINE狀態</th><th>操作</th></tr></thead>
+            <thead><tr><th>工號</th><th>姓名</th><th>派工客戶</th><th>LINE狀態</th><th>操作</th></tr></thead>
             <tbody id="emp-tbody"></tbody>
           </table>
         </div>
@@ -930,10 +930,14 @@ function renderEmpTable() {
   tbody.innerHTML=sorted.map(e=>`<tr>
     <td><strong style="font-family:monospace">${e.empid}</strong></td>
     <td>${e.name}</td>
-    <td style="font-size:11px;color:var(--muted);font-family:monospace;max-width:180px;overflow:hidden;text-overflow:ellipsis">${e.lineId||'—'}</td>
+    <td style="font-size:12px;color:var(--muted)">
+      ${e.clients ? e.clients : '<span style="color:#f87171">未設定</span>'}
+      <button class="btn-outline" style="padding:2px 8px;font-size:11px;margin-left:6px"
+        onclick="editEmpClients('${e._id}','${e.name}','${e.clients||''}')">設定</button>
+    </td>
     <td>${e.lineId?'<span class="badge-approved">已設定</span>':'<span class="badge-pending">未設定</span>'}</td>
     <td>
-      <button class="btn btn-outline btn-sm" onclick="editEmpLine('${e._id}','${e.name}','${e.empid}')">編輯</button>
+      <button class="btn btn-outline btn-sm" onclick="editEmpLine('${e._id}','${e.name}','${e.empid}')">LINE ID</button>
       <button class="btn-del" onclick="deleteEmp('${e._id}')">刪除</button>
     </td>
   </tr>`).join('');
@@ -952,6 +956,25 @@ async function saveEmployee() {
     ['e-empid','e-name','e-lineid'].forEach(id=>document.getElementById(id).value='');
   } catch(e) { setSS('emp-sync','err','失敗'); toast('❌ 儲存失敗',true); }
 }
+function editEmpClients(id, name, current) {
+  // 顯示可選的客戶清單
+  const clientOpts = allClients.length
+    ? allClients.map(c => c.name).join('、')
+    : '（尚無客戶）';
+  const input = prompt(
+    `設定「${name}」的派工地點
+可用客戶：${clientOpts}
+多個地點用逗號分隔（例如：雙葉,日通-8倉）：`,
+    current || ''
+  );
+  if (input === null) return;
+  dbUpdate('employees', id, { clients: input.trim() }).then(async () => {
+    allEmployees = await dbGetAll('employees');
+    renderEmpTable();
+    toast('✓ 派工地點已更新');
+  });
+}
+
 function editEmpLine(id,name,empid) {
   const emp=allEmployees.find(e=>e._id===id);
   const newId=prompt(`編輯 ${name}（${empid}）的 LINE User ID：`,emp.lineId||'');
