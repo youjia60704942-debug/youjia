@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出勤查詢系統</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: rgba(255,255,255,0.08);
+    --accent: #4f8ef7;
+    --accent2: #7c6af7;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Noto Sans TC', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+  /* 背景網格 */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* ── Login ── */
+  #login-wrap {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px 40px;
+    width: 100%; max-width: 420px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    position: relative; overflow: hidden;
+  }
+  .login-box::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .login-logo {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 36px;
+  }
+  .login-mark {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; color: #fff;
+  }
+  .login-title { font-size: 18px; font-weight: 700; }
+  .login-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .client-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(79,142,247,0.12); border: 1px solid rgba(79,142,247,0.25);
+    color: var(--accent); padding: 6px 14px; border-radius: 20px;
+    font-size: 13px; font-weight: 500; margin-bottom: 28px;
+  }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; text-transform: uppercase; }
+  input[type=password] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; color: var(--text);
+    font-size: 15px; font-family: var(--sans); outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type=password]:focus { border-color: var(--accent); }
+  .btn-login {
+    width: 100%; margin-top: 20px; padding: 15px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 600; font-family: var(--sans);
+    cursor: pointer; transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn-login:hover { opacity: 0.9; }
+  .btn-login:active { transform: scale(0.98); }
+  .login-err {
+    margin-top: 14px; padding: 10px 14px; border-radius: 8px;
+    background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.25);
+    color: var(--red); font-size: 13px; display: none;
+  }
+
+  /* ── Dashboard ── */
+  #dashboard { display: none; }
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,17,23,0.85); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px; height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 14px; }
+  .topbar-mark {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+  }
+  .topbar-name { font-size: 15px; font-weight: 600; }
+  .topbar-client {
+    background: rgba(79,142,247,0.12); border: 1px solid rgba(79,142,247,0.2);
+    color: var(--accent); padding: 3px 10px; border-radius: 20px; font-size: 12px;
+  }
+  .btn-logout {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    padding: 6px 14px; border-radius: 8px; font-size: 12px; cursor: pointer;
+    font-family: var(--sans); transition: all 0.2s;
+  }
+  .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+  .main { max-width: 960px; margin: 0 auto; padding: 28px 20px; }
+
+  /* 篩選區 */
+  .filter-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px; margin-bottom: 24px;
+  }
+  .filter-title { font-size: 13px; color: var(--muted); margin-bottom: 16px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .filter-group label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .filter-group input, .filter-group select {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; color: var(--text);
+    font-size: 13px; font-family: var(--sans); outline: none;
+    transition: border-color 0.2s; min-width: 140px;
+  }
+  .filter-group input:focus, .filter-group select:focus { border-color: var(--accent); }
+  .btn-query {
+    padding: 10px 24px; background: var(--accent);
+    color: #fff; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 600; font-family: var(--sans);
+    cursor: pointer; transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+  .btn-query:hover { opacity: 0.85; }
+
+  /* 統計卡 */
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .stat-val { font-size: 28px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+  .stat-unit { font-size: 13px; color: var(--muted); margin-left: 4px; }
+
+  /* 記錄表 */
+  .table-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+  }
+  .table-header {
+    padding: 18px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .table-header-title { font-size: 14px; font-weight: 600; }
+  .record-count {
+    font-size: 12px; color: var(--muted);
+    background: var(--surface2); padding: 4px 10px; border-radius: 20px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; padding: 12px 20px;
+    font-size: 11px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.06em; border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+  tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  tbody td { padding: 14px 20px; font-size: 14px; }
+  .td-name { font-weight: 600; }
+  .td-time { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+  .td-hours { font-family: var(--mono); font-size: 13px; }
+  .td-shift {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .shift-day { background: rgba(251,191,36,0.12); color: var(--amber); }
+  .shift-night { background: rgba(124,106,247,0.12); color: var(--accent2); }
+  .td-ot { color: var(--green); font-family: var(--mono); font-size: 12px; }
+  .td-ot.none { color: var(--muted); }
+
+  .empty-state {
+    padding: 60px 20px; text-align: center; color: var(--muted);
+  }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; }
+
+  /* Loading */
+  .loading-wrap { padding: 60px; text-align: center; }
+  .spin {
+    display: inline-block; width: 28px; height: 28px;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 12px 20px; border-radius: 10px; font-size: 13px;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+
+  @media (max-width: 600px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .filter-row { flex-direction: column; }
+    .filter-group input, .filter-group select { min-width: unset; width: 100%; }
+    .btn-query { width: 100%; }
+    thead th:nth-child(4), tbody td:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 登入畫面 -->
+<div id="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-mark">優</div>
+      <div>
+        <div class="login-title">出勤查詢系統</div>
+        <div class="login-sub">優佳人力資源</div>
+      </div>
+    </div>
+    <div class="client-badge" id="login-client-badge">📍 載入中…</div>
+    <div>
+      <label>管理密碼</label>
+      <input type="password" id="pw-input" placeholder="請輸入密碼"
+        onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="btn-login" onclick="doLogin()">登入查看出勤記錄</button>
+    <div class="login-err" id="login-err">❌ 密碼錯誤，請重試</div>
+  </div>
+</div>
+
+<!-- 主畫面 -->
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-mark">優</div>
+      <div class="topbar-name">出勤查詢</div>
+      <div class="topbar-client" id="topbar-client"></div>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">登出</button>
+  </div>
+
+  <div class="main">
+    <!-- 篩選 -->
+    <div class="filter-card">
+      <div class="filter-title">查詢條件</div>
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>開始日期</label>
+          <input type="date" id="f-start">
+        </div>
+        <div class="filter-group">
+          <label>結束日期</label>
+          <input type="date" id="f-end">
+        </div>
+        <div class="filter-group">
+          <label>班別</label>
+          <select id="f-shift">
+            <option value="">全部班別</option>
+            <option value="日班">日班</option>
+            <option value="夜班">夜班</option>
+          </select>
+        </div>
+        <button class="btn-query" onclick="loadRecords()">🔍 查詢</button>
+      </div>
+    </div>
+
+    <!-- 統計 -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">出勤人次</div>
+        <div class="stat-val" id="stat-count">—<span class="stat-unit">次</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">正常工時合計</div>
+        <div class="stat-val" id="stat-hours">—<span class="stat-unit">hr</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">加班工時合計</div>
+        <div class="stat-val" id="stat-ot">—<span class="stat-unit">hr</span></div>
+      </div>
+    </div>
+
+    <!-- 記錄表 -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-header-title">打卡記錄</div>
+        <div class="record-count" id="record-count">—</div>
+      </div>
+      <div id="table-body">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div class="empty-text">請選擇日期範圍後點擊查詢</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxXs2mDh1cZYy64cFJ87VGqiTl49wbTlPudoevmojhudp0diUZhffLrRWfkC8ZzRGef/exec';
+
+let clientName = '';
+let verified   = false;
+
+// ── 初始化 ──
+window.addEventListener('DOMContentLoaded', () => {
+  const p = new URLSearchParams(window.location.search);
+  clientName = p.get('client') || '';
+
+  if (!clientName) {
+    document.getElementById('login-client-badge').textContent = '⚠ 缺少客戶參數';
+    return;
+  }
+  document.getElementById('login-client-badge').textContent = '📍 ' + clientName;
+
+  // 預設日期：本月第一天到今天
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  document.getElementById('f-start').value = fmtDate(firstDay);
+  document.getElementById('f-end').value   = fmtDate(today);
+});
+
+// ── 登入 ──
+async function doLogin() {
+  const pw = document.getElementById('pw-input').value;
+  if (!pw) { showErr('請輸入密碼'); return; }
+
+  const btn = document.querySelector('.btn-login');
+  btn.textContent = '驗證中…'; btn.disabled = true;
+
+  try {
+    const res  = await fetch(`${APPS_SCRIPT_URL}?action=client_login&client=${encodeURIComponent(clientName)}&pw=${encodeURIComponent(pw)}`);
+    const data = await res.json();
+
+    if (data.success) {
+      verified = true;
+      document.getElementById('login-wrap').style.display = 'none';
+      document.getElementById('dashboard').style.display  = 'block';
+      document.getElementById('topbar-client').textContent = clientName;
+      loadRecords();
+    } else {
+      showErr('密碼錯誤，請重試');
+    }
+  } catch(e) {
+    showErr('連線失敗，請稍後再試');
+  }
+  btn.textContent = '登入查看出勤記錄'; btn.disabled = false;
+}
+
+function showErr(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = '❌ ' + msg;
+  el.style.display = 'block';
+}
+
+function doLogout() {
+  verified = false;
+  document.getElementById('login-wrap').style.display = 'flex';
+  document.getElementById('dashboard').style.display  = 'none';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('login-err').style.display = 'none';
+}
+
+// ── 查詢記錄 ──
+async function loadRecords() {
+  if (!verified) return;
+  const start = document.getElementById('f-start').value;
+  const end   = document.getElementById('f-end').value;
+  const shift = document.getElementById('f-shift').value;
+
+  if (!start || !end) { showToast('請選擇日期範圍'); return; }
+  if (start > end)    { showToast('開始日期不能晚於結束日期'); return; }
+
+  document.getElementById('table-body').innerHTML =
+    '<div class="loading-wrap"><div class="spin"></div></div>';
+
+  try {
+    const url = `${APPS_SCRIPT_URL}?action=client_records&client=${encodeURIComponent(clientName)}&start=${start}&end=${end}&shift=${encodeURIComponent(shift)}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+
+    if (!data.success) { showToast('查詢失敗：' + (data.error||'')); return; }
+    renderTable(data.records || []);
+  } catch(e) {
+    showToast('連線失敗，請稍後再試');
+    document.getElementById('table-body').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">連線失敗</div></div>';
+  }
+}
+
+// ── 渲染表格 ──
+function renderTable(records) {
+  // 統計
+  const totalHours = records.reduce((s, r) => s + (parseFloat(r.normalHours)||0), 0);
+  const totalOt    = records.reduce((s, r) => s + (parseFloat(r.overtimeHours)||0), 0);
+  document.getElementById('stat-count').innerHTML  = `${records.length}<span class="stat-unit">次</span>`;
+  document.getElementById('stat-hours').innerHTML  = `${totalHours.toFixed(1)}<span class="stat-unit">hr</span>`;
+  document.getElementById('stat-ot').innerHTML     = `${totalOt.toFixed(1)}<span class="stat-unit">hr</span>`;
+  document.getElementById('record-count').textContent = `共 ${records.length} 筆`;
+
+  if (!records.length) {
+    document.getElementById('table-body').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">此區間沒有出勤記錄</div></div>';
+    return;
+  }
+
+  let html = `<table>
+    <thead>
+      <tr>
+        <th>日期</th>
+        <th>姓名</th>
+        <th>班別</th>
+        <th>上班</th>
+        <th>下班</th>
+        <th>正常工時</th>
+        <th>加班工時</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  records.forEach(r => {
+    const shiftClass = r.shift === '日班' ? 'shift-day' : 'shift-night';
+    const otClass    = parseFloat(r.overtimeHours) > 0 ? '' : 'none';
+    const note       = r.note || '';
+    // 從備註解析上下班時間
+    const times = note.match(/(\d{2}:\d{2})-(\d{2}:\d{2})/);
+    const clockIn  = times ? times[1] : '—';
+    const clockOut = times ? times[2] : '—';
+
+    html += `<tr>
+      <td style="font-family:var(--mono);font-size:13px">${r.date||'—'}</td>
+      <td class="td-name">${r.name||'—'}</td>
+      <td><span class="td-shift ${shiftClass}">${r.shift||'—'}</span></td>
+      <td class="td-time">${clockIn}</td>
+      <td class="td-time">${clockOut}</td>
+      <td class="td-hours">${parseFloat(r.normalHours).toFixed(1)} hr</td>
+      <td class="td-ot ${otClass}">${parseFloat(r.overtimeHours)>0 ? parseFloat(r.overtimeHours).toFixed(1)+' hr' : '—'}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('table-body').innerHTML = html;
+}
+
+// ── 工具 ──
+function fmtDate(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+let _toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

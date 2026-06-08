@@ -280,6 +280,9 @@ tr:hover td{background:rgba(201,168,76,.04);}
         <div class="card-title">🏭 新增客戶</div>
         <div class="form-row">
           <div class="form-group"><label>客戶名稱</label><input type="text" id="c-name" placeholder="例：雙葉、台積電…"></div>
+          <div class="form-group"><label>主管查看密碼</label><input type="text" id="c-pw" placeholder="設定客戶主管登入密碼"></div>
+        </div>
+        <div class="form-row">
           <div class="form-group"><label>備註（選填）</label><input type="text" id="c-note" placeholder="地址、聯絡人…"></div>
         </div>
         <button class="btn btn-primary" onclick="saveClient()">新增客戶</button>
@@ -291,7 +294,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
         </div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>#</th><th>客戶名稱</th><th>備註</th><th>新增時間</th><th>操作</th></tr></thead>
+            <thead><tr><th>#</th><th>客戶名稱</th><th>主管密碼</th><th>查看連結</th><th>操作</th></tr></thead>
             <tbody id="client-tbody"></tbody>
           </table>
         </div>
@@ -629,26 +632,44 @@ function renderClientTable() {
   const tbody = document.getElementById('client-tbody');
   if (!allClients.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">尚無客戶，請新增</td></tr>'; return; }
   const sorted = [...allClients].sort((a, b) => (a.name||'').localeCompare(b.name||''));
+  const base = location.origin + location.pathname.replace('index.html','') + 'client.html';
   tbody.innerHTML = sorted.map((c, i) => `<tr>
     <td>${i+1}</td><td><strong>${c.name||'—'}</strong></td>
-    <td style="color:var(--muted);font-size:13px">${c.note||'—'}</td>
-    <td style="color:var(--muted);font-size:12px">${(c.createdAt||'').slice(0,10)||'—'}</td>
-    <td><button class="btn-del" onclick="deleteClient('${c._id}','${c.name}')">刪除</button></td>
+    <td style="font-family:monospace;font-size:13px">${c.pw ? '••••••' : '<span style=color:#f87171>未設定</span>'}</td>
+    <td><a href="${base}?client=${encodeURIComponent(c.name||'')}" target="_blank"
+       style="color:#4f8ef7;font-size:12px;text-decoration:none;">🔗 開啟</a></td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="editClientPw('${c._id}','${c.name}','${c.pw||''}')">設定密碼</button>
+      <button class="btn-del" onclick="deleteClient('${c._id}','${c.name}')">刪除</button>
+    </td>
   </tr>`).join('');
 }
 async function saveClient() {
   const name = document.getElementById('c-name').value.trim();
+  const pw   = document.getElementById('c-pw').value.trim();
   const note = document.getElementById('c-note').value.trim();
   if (!name) { toast('⚠ 請輸入客戶名稱', true); return; }
+  if (!pw)   { toast('⚠ 請設定主管查看密碼', true); return; }
   if (allClients.find(c => c.name === name)) { toast('⚠ 此客戶已存在', true); return; }
   setSS('client-sync', 'loading', '儲存中…');
   try {
-    await dbAdd('clients', { name, note });
+    await dbAdd('clients', { name, pw, note });
     allClients = await dbGetAll('clients');
     renderClientTable(); refreshClientSelects();
     setSS('client-sync', 'done', '已儲存'); toast('✓ 客戶已新增：' + name);
-    document.getElementById('c-name').value = ''; document.getElementById('c-note').value = '';
+    document.getElementById('c-name').value = ''; document.getElementById('c-pw').value = ''; document.getElementById('c-note').value = '';
   } catch(e) { setSS('client-sync', 'err', '失敗'); toast('❌ 儲存失敗', true); }
+}
+async function editClientPw(id, name, currentPw) {
+  const newPw = prompt(`設定「${name}」的主管查看密碼：`, currentPw || '');
+  if (newPw === null) return;
+  if (!newPw.trim()) { toast('⚠ 密碼不能為空', true); return; }
+  const idx = allClients.findIndex(c => c._id === id);
+  if (idx === -1) return;
+  allClients[idx].pw = newPw.trim();
+  await dbUpdate('clients', id, { ...allClients[idx] });
+  renderClientTable();
+  toast('✓ 密碼已更新');
 }
 async function deleteClient(id, name) {
   if (!confirm(`確定刪除客戶「${name}」？`)) return;
