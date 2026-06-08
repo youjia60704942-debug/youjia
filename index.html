@@ -283,7 +283,15 @@ tr:hover td{background:rgba(201,168,76,.04);}
           <div class="form-group"><label>主管查看密碼</label><input type="text" id="c-pw" placeholder="設定客戶主管登入密碼"></div>
         </div>
         <div class="form-row">
+          <div class="form-group"><label>緯度</label><input type="text" id="c-lat" placeholder="例：25.046265" inputmode="decimal"></div>
+          <div class="form-group"><label>經度</label><input type="text" id="c-lng" placeholder="例：121.360041" inputmode="decimal"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>打卡範圍（公尺）</label><input type="number" id="c-radius" placeholder="預設 100" value="100" min="50" max="1000"></div>
           <div class="form-group"><label>備註（選填）</label><input type="text" id="c-note" placeholder="地址、聯絡人…"></div>
+        </div>
+        <div class="info-box" style="margin-bottom:12px">
+          💡 座標取得方式：Google Maps 找到公司位置 → 右鍵 → 點第一行數字即可複製
         </div>
         <button class="btn btn-primary" onclick="saveClient()">新增客戶</button>
       </div>
@@ -294,7 +302,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
         </div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>#</th><th>客戶名稱</th><th>主管密碼</th><th>查看連結</th><th>操作</th></tr></thead>
+            <thead><tr><th>#</th><th>客戶名稱</th><th>座標</th><th>範圍</th><th>主管密碼</th><th>查看連結</th><th>操作</th></tr></thead>
             <tbody id="client-tbody"></tbody>
           </table>
         </div>
@@ -661,35 +669,59 @@ function renderClientTable() {
   tbody.innerHTML = allClients.map((c, i) => `<tr>
     <td>${i+1}</td>
     <td><strong>${c.name||'—'}</strong></td>
+    <td style="font-family:monospace;font-size:11px;color:var(--muted)">${c.lat&&c.lng ? `${parseFloat(c.lat).toFixed(4)},${parseFloat(c.lng).toFixed(4)}` : '<span style="color:#f87171">未設定</span>'}</td>
+    <td style="font-family:monospace;font-size:12px">${c.radius||100}m</td>
     <td style="font-family:monospace;font-size:13px">${c.pw ? '••••••' : '<span style="color:#f87171">未設定</span>'}</td>
     <td><a href="${base}?client=${encodeURIComponent(c.name||'')}" target="_blank"
        style="color:#4f8ef7;font-size:12px;text-decoration:none;">🔗 開啟</a></td>
-    <td style="display:flex;gap:6px;">
+    <td style="display:flex;gap:6px;flex-wrap:wrap;">
       <button class="btn-outline" style="padding:4px 10px;font-size:12px;"
-        onclick="editClientPw('${c.name}','${c.pw||''}')">設定密碼</button>
+        onclick="editClientCoord('${c.name}','${c.lat||''}','${c.lng||''}','${c.radius||100}')">座標</button>
+      <button class="btn-outline" style="padding:4px 10px;font-size:12px;"
+        onclick="editClientPw('${c.name}','${c.pw||''}')">密碼</button>
       <button class="btn-del" onclick="deleteClient('${c.name}')">刪除</button>
     </td>
   </tr>`).join('');
 }
 
 async function saveClient() {
-  const name = document.getElementById('c-name').value.trim();
-  const pw   = document.getElementById('c-pw').value.trim();
-  const note = document.getElementById('c-note').value.trim();
+  const name   = document.getElementById('c-name').value.trim();
+  const pw     = document.getElementById('c-pw').value.trim();
+  const lat    = document.getElementById('c-lat').value.trim();
+  const lng    = document.getElementById('c-lng').value.trim();
+  const radius = document.getElementById('c-radius').value.trim() || '100';
+  const note   = document.getElementById('c-note').value.trim();
   if (!name) { toast('⚠ 請輸入客戶名稱', true); return; }
   if (!pw)   { toast('⚠ 請設定主管查看密碼', true); return; }
+  if (!lat || !lng) { toast('⚠ 請填入打卡座標', true); return; }
+  if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) { toast('⚠ 座標格式不正確', true); return; }
   if (allClients.find(c => c.name === name)) { toast('⚠ 此客戶已存在', true); return; }
   setSS('client-sync', 'loading', '儲存中…');
   try {
-    const res = await gasPost({ action: 'add_client', name, pw, note });
+    const res = await gasPost({ action: 'add_client', name, pw, lat, lng, radius, note });
     if (!res.success) throw new Error(res.error);
     allClients = res.clients || [];
     renderClientTable(); refreshClientSelects();
     setSS('client-sync', 'done', '已儲存'); toast('✓ 客戶已新增：' + name);
-    document.getElementById('c-name').value = '';
-    document.getElementById('c-pw').value   = '';
-    document.getElementById('c-note').value = '';
+    ['c-name','c-pw','c-lat','c-lng','c-note'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('c-radius').value = '100';
   } catch(e) { setSS('client-sync', 'err', '失敗'); toast('❌ 儲存失敗：' + e.message, true); }
+}
+
+async function editClientCoord(name, currentLat, currentLng, currentRadius) {
+  const lat    = prompt(`「${name}」緯度：`, currentLat || '');
+  if (lat === null) return;
+  const lng    = prompt(`「${name}」經度：`, currentLng || '');
+  if (lng === null) return;
+  const radius = prompt(`「${name}」打卡範圍（公尺）：`, currentRadius || '100');
+  if (radius === null) return;
+  if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) { toast('⚠ 座標格式不正確', true); return; }
+  try {
+    const res = await gasPost({ action: 'update_client_coord', name, lat: lat.trim(), lng: lng.trim(), radius: radius.trim() });
+    if (!res.success) throw new Error(res.error);
+    allClients = res.clients || [];
+    renderClientTable(); toast('✓ 座標已更新');
+  } catch(e) { toast('❌ 更新失敗', true); }
 }
 
 async function editClientPw(name, currentPw) {
