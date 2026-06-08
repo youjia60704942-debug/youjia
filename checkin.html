@@ -514,6 +514,8 @@ async function init() {
 
     document.getElementById('userName').textContent    = userName;
     document.getElementById('clientBadge').textContent = '請選擇派工地點';
+    // 暫時 debug：顯示 userId 前8碼
+    document.getElementById('clientBadge').textContent = 'ID:' + userId.substring(0,8) + '…';
 
     if (profile.pictureUrl) {
       document.getElementById('userAvatar').innerHTML =
