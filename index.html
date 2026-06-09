@@ -188,8 +188,8 @@ tr:hover td{background:rgba(201,168,76,.04);}
           </div>
         </div>
         <div class="form-group"><label>姓名</label>
-          <input type="text" id="s-name" placeholder="由工號自動帶入" autocomplete="off" readonly
-            style="background:#f8f8f8;color:var(--muted);">
+          <input type="text" id="s-name" placeholder="輸入姓名或由工號帶入" autocomplete="off"
+            style="background:var(--surface);color:var(--text);">
         </div>
       </div>
 
@@ -787,7 +787,9 @@ async function staffSubmit() {
   const shift=document.getElementById('s-shift').value;
   const note=document.getElementById('s-note').value.trim();
 
-  if (!name||!date||!client||!shift) { toast('⚠ 請填寫日期、客戶及班別',true); return; }
+  // 姓名必填（可直接輸入，或由工號帶入），工號選填
+  if (!name)  { toast('⚠ 請輸入姓名或工號', true); return; }
+  if (!date||!client||!shift) { toast('⚠ 請填寫日期、客戶及班別', true); return; }
 
   setSS('staff-sync','loading','確認中…');
   try {
