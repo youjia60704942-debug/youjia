@@ -658,13 +658,6 @@ function confirmNameInput() {
   document.getElementById('confirm-name').textContent = name;
   document.getElementById('identity-confirm').style.display = 'block';
   document.getElementById('shift-fields').style.display = 'none';
-  // 沒有工號時客戶選單鎖定
-  const empid = document.getElementById('s-empid').value.trim();
-  if (!empid) {
-    const sc = document.getElementById('s-client');
-    sc.innerHTML = '<option value="">（需要工號才能選擇客戶）</option>';
-    sc.disabled = true;
-  }
 }
 function acSearch() {}
 function acSelect() {}
@@ -805,13 +798,11 @@ async function confirmIdentity(yes) {
     document.getElementById('identity-confirm').style.display = 'none';
     document.getElementById('shift-fields').style.display = 'block';
     document.getElementById('s-date').value = todayStr();
-    // 有工號時用員工派工客戶，沒工號時鎖定
-    const empid = document.getElementById('s-empid').value.trim();
-    const name  = document.getElementById('s-name').value.trim();
-    if (empid && name) {
+    // 有姓名就查派工客戶（不管有無工號）
+    const name = document.getElementById('s-name').value.trim();
+    if (name) {
       await updateClientSelectFromSheets(name);
     }
-    // 沒工號的情況客戶選單已在 confirmNameInput 設為鎖定
   } else {
     // 清空重新輸入
     document.getElementById('s-empid').value = '';
