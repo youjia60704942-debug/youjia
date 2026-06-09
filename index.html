@@ -211,7 +211,9 @@ tr:hover td{background:rgba(201,168,76,.04);}
         <div class="form-row">
           <div class="form-group"><label>報班日期</label><input type="date" id="s-date"></div>
           <div class="form-group"><label>派工客戶</label>
-            <select id="s-client"><option value="">請選擇客戶</option></select>
+            <select id="s-client" disabled style="background:#f8f8f8;color:var(--muted);">
+              <option value="">請先輸入工號</option>
+            </select>
           </div>
         </div>
         <div class="form-row">
@@ -625,6 +627,25 @@ function lookupByEmpid() {
   document.getElementById('confirm-name').textContent = emp.name;
   document.getElementById('identity-confirm').style.display = 'block';
   document.getElementById('shift-fields').style.display = 'none';
+  // 根據員工的派工客戶更新選單
+  updateClientSelectForEmp(emp);
+}
+
+function updateClientSelectForEmp(emp) {
+  const sc = document.getElementById('s-client');
+  // emp.clients 是逗號分隔的客戶名稱（從 Firestore 讀到）
+  const empClients = emp.clients ? emp.clients.split(',').map(s=>s.trim()).filter(s=>s) : [];
+  if (!empClients.length) {
+    // 員工沒有設定派工客戶
+    sc.innerHTML = '<option value="">（尚未設定派工客戶，請聯繫管理員）</option>';
+    sc.disabled = true;
+  } else {
+    const opts = empClients
+      .filter(name => allClients.find(c => c.name === name)) // 只顯示客戶清單裡有的
+      .map(name => `<option value="${name}">${name}</option>`).join('');
+    sc.innerHTML = '<option value="">請選擇客戶</option>' + (opts || '<option value="">（派工客戶未設定，請聯繫管理員）</option>');
+    sc.disabled = false;
+  }
 }
 function confirmNameInput() {
   const name = document.getElementById('s-name').value.trim();
@@ -632,6 +653,13 @@ function confirmNameInput() {
   document.getElementById('confirm-name').textContent = name;
   document.getElementById('identity-confirm').style.display = 'block';
   document.getElementById('shift-fields').style.display = 'none';
+  // 沒有工號時客戶選單鎖定
+  const empid = document.getElementById('s-empid').value.trim();
+  if (!empid) {
+    const sc = document.getElementById('s-client');
+    sc.innerHTML = '<option value="">（需要工號才能選擇客戶）</option>';
+    sc.disabled = true;
+  }
 }
 function acSearch() {}
 function acSelect() {}
@@ -825,7 +853,9 @@ function resetStaff() {
   document.getElementById('staff-success').style.display='none';
   ['s-name','s-empid','s-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('s-shift').value='';
-  document.getElementById('s-client').value='';
+  const sc=document.getElementById('s-client');
+  sc.innerHTML='<option value="">請先輸入工號</option>';
+  sc.disabled=true;
   document.getElementById('s-date').value=todayStr();
   document.getElementById('identity-confirm').style.display='none';
   document.getElementById('shift-fields').style.display='none';
