@@ -377,6 +377,22 @@
     </div>
   </div>
 
+  <!-- 姓名確認 Modal -->
+  <div id="name-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;display:none;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:20px;padding:32px 28px;width:100%;max-width:360px;box-shadow:0 8px 40px rgba(0,0,0,0.2);">
+      <div style="font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:8px;">👋 首次使用打卡系統</div>
+      <div style="font-size:14px;color:#666;margin-bottom:24px;">請輸入您的姓名以確認身份，系統將自動設定您的打卡帳號。</div>
+      <input type="text" id="name-input" placeholder="請輸入姓名"
+        style="width:100%;padding:14px 16px;border:2px solid #ddd;border-radius:12px;font-size:16px;font-family:inherit;outline:none;margin-bottom:16px;"
+        onkeydown="if(event.key==='Enter') confirmName()">
+      <div id="name-error" style="color:#e53e3e;font-size:13px;margin-bottom:12px;display:none;"></div>
+      <button onclick="confirmName()"
+        style="width:100%;padding:16px;background:#22c55e;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;">
+        確認身份
+      </button>
+    </div>
+  </div>
+
   <!-- 地點選單 -->
   <div class="location-card fade-in" id="client-select-card" style="display:none">
     <div class="location-label">🏭 選擇派工地點</div>
@@ -514,8 +530,6 @@ async function init() {
 
     document.getElementById('userName').textContent    = userName;
     document.getElementById('clientBadge').textContent = '請選擇派工地點';
-    // 暫時 debug：顯示 userId 前8碼
-    document.getElementById('clientBadge').textContent = 'ID:' + userId.substring(0,8) + '…';
 
     if (profile.pictureUrl) {
       document.getElementById('userAvatar').innerHTML =
@@ -547,10 +561,15 @@ async function loadClientList() {
 
     const sel = document.getElementById('client-select');
 
+    if (data.needRegister) {
+      // 首次使用，需要輸入姓名
+      showNameModal();
+      return;
+    }
     if (!allClientList.length) {
       sel.innerHTML = '<option value="">（尚未設定派工地點，請聯繫管理員）</option>';
       document.getElementById('client-select-card').style.display = 'block';
-      showToast('⚠️ 尚未設定派工地點', 'error');
+      showToast('⚠️ 尚未設定派工地點，請聯繫管理員', 'error');
       return;
     }
 
@@ -568,6 +587,41 @@ async function loadClientList() {
   } catch(err) {
     showToast('❌ 無法載入地點清單', 'error');
   }
+}
+
+// 顯示姓名確認 Modal
+function showNameModal() {
+  const modal = document.getElementById('name-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('name-input').focus(), 300);
+}
+
+// 確認姓名
+async function confirmName() {
+  const name = document.getElementById('name-input').value.trim();
+  const errEl = document.getElementById('name-error');
+  if (!name) { errEl.textContent = '請輸入姓名'; errEl.style.display = 'block'; return; }
+
+  const btn = document.querySelector('#name-modal button');
+  btn.textContent = '驗證中…'; btn.disabled = true;
+
+  try {
+    const res  = await fetch(`${APPS_SCRIPT_URL}?action=register_punch_id&userId=${encodeURIComponent(userId)}&name=${encodeURIComponent(name)}`);
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById('name-modal').style.display = 'none';
+      // 重新載入派工地點
+      await loadClientList();
+    } else {
+      errEl.textContent = data.error || '找不到此姓名，請確認後重試';
+      errEl.style.display = 'block';
+    }
+  } catch(e) {
+    errEl.textContent = '連線失敗，請稍後再試';
+    errEl.style.display = 'block';
+  }
+  btn.textContent = '確認身份'; btn.disabled = false;
 }
 
 // 員工選擇地點
