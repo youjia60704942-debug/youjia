@@ -188,8 +188,12 @@ tr:hover td{background:rgba(201,168,76,.04);}
           </div>
         </div>
         <div class="form-group"><label>姓名</label>
-          <input type="text" id="s-name" placeholder="輸入姓名或由工號帶入" autocomplete="off"
-            style="background:var(--surface);color:var(--text);">
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="s-name" placeholder="輸入姓名或由工號帶入" autocomplete="off"
+              style="background:var(--surface);color:var(--text);flex:1;"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();confirmNameInput();}">
+            <button class="btn btn-outline" onclick="confirmNameInput()" style="padding:12px 14px;white-space:nowrap;">確認</button>
+          </div>
         </div>
       </div>
 
@@ -619,6 +623,13 @@ function lookupByEmpid() {
   if (!emp) { toast('⚠ 找不到此工號，請確認後重試', true); document.getElementById('s-name').value = ''; return; }
   document.getElementById('s-name').value = emp.name;
   document.getElementById('confirm-name').textContent = emp.name;
+  document.getElementById('identity-confirm').style.display = 'block';
+  document.getElementById('shift-fields').style.display = 'none';
+}
+function confirmNameInput() {
+  const name = document.getElementById('s-name').value.trim();
+  if (!name) { toast('⚠ 請輸入姓名', true); return; }
+  document.getElementById('confirm-name').textContent = name;
   document.getElementById('identity-confirm').style.display = 'block';
   document.getElementById('shift-fields').style.display = 'none';
 }
