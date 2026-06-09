@@ -800,12 +800,18 @@ function refreshClientSelects() {
   if (ec) ec.innerHTML = '<option value="">請選擇客戶</option>' + opts;
 }
 
-function confirmIdentity(yes) {
+async function confirmIdentity(yes) {
   if (yes) {
     document.getElementById('identity-confirm').style.display = 'none';
     document.getElementById('shift-fields').style.display = 'block';
     document.getElementById('s-date').value = todayStr();
-    refreshClientSelects();
+    // 有工號時用員工派工客戶，沒工號時鎖定
+    const empid = document.getElementById('s-empid').value.trim();
+    const name  = document.getElementById('s-name').value.trim();
+    if (empid && name) {
+      await updateClientSelectFromSheets(name);
+    }
+    // 沒工號的情況客戶選單已在 confirmNameInput 設為鎖定
   } else {
     // 清空重新輸入
     document.getElementById('s-empid').value = '';
