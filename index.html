@@ -181,8 +181,9 @@ tr:hover td{background:rgba(201,168,76,.04);}
       <div class="form-row">
         <div class="form-group"><label>工號</label>
           <div style="display:flex;gap:8px;">
-            <input type="text" id="s-empid" placeholder="輸入工號後按 Enter" autocomplete="off"
+            <input type="text" id="s-empid" placeholder="輸入工號後按 Enter（選填）" autocomplete="off"
               onkeydown="if(event.key==='Enter'){event.preventDefault();lookupByEmpid();}"
+              oninput="empidVerified=false;"
               style="flex:1;">
             <button class="btn btn-outline" onclick="lookupByEmpid()" style="padding:12px 14px;white-space:nowrap;">查詢</button>
           </div>
@@ -640,6 +641,7 @@ async function lookupByEmpid() {
     document.getElementById('confirm-name').textContent = data.name;
     document.getElementById('identity-confirm').style.display = 'block';
     document.getElementById('shift-fields').style.display = 'none';
+    empidVerified = true; // 工號已驗證
     await updateClientSelectFromSheets(data.name);
   } catch(e) {
     toast('⚠ 查詢失敗，請稍後再試', true);
@@ -686,6 +688,7 @@ function modalAcFill() {
 
 // 客戶管理
 // ── 客戶管理（資料來源：Google Sheets，透過 Apps Script）──────
+let empidVerified = false; // 工號是否經過系統驗證
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxXs2mDh1cZYy64cFJ87VGqiTl49wbTlPudoevmojhudp0diUZhffLrRWfkC8ZzRGef/exec';
 let allClients = [];
 
@@ -827,6 +830,7 @@ async function confirmIdentity(yes) {
     document.getElementById('identity-confirm').style.display = 'none';
     document.getElementById('shift-fields').style.display = 'none';
     document.getElementById('s-empid').focus();
+  empidVerified = false;
   }
 }
 // autocomplete 已移除，舊監聽器清除
@@ -845,7 +849,8 @@ async function staffSubmit() {
   const shift=document.getElementById('s-shift').value;
   const note=document.getElementById('s-note').value.trim();
 
-  // 姓名必填（可直接輸入，或由工號帶入），工號選填
+  // 有填工號但沒通過系統查詢 → 拒絕
+  if (empid && !empidVerified) { toast('⚠ 工號未經查詢驗證，請點「查詢」按鈕確認工號', true); return; }
   if (!name)  { toast('⚠ 請輸入姓名或工號', true); return; }
   if (!date||!client||!shift) { toast('⚠ 請填寫日期、客戶及班別', true); return; }
 
@@ -907,6 +912,7 @@ function renderAdminTable(list) {
     const sb=r.status==='approved'?'<span class="badge-approved">✓ 通過</span>':r.status==='rejected'?'<span class="badge-rejected">✗ 拒絕</span>':'<span class="badge-pending">待審核</span>';
     // 所有狀態都顯示完整操作按鈕，可隨時修改
     const acts=`
+      <button class="btn-outline btn-sm" style="padding:3px 8px;font-size:11px;margin-bottom:3px" onclick="editRecordEmpid('${r._id}','${r.empid}')">✏ 工號</button>
       ${r.status!=='approved'?`<button class="btn-approve" onclick="approveRecord('${r._id}','${r.empid}','${r.name}','${r.date}','${r.shift}')">✓ 通過</button>`:''}
       ${r.status!=='rejected'?`<button class="btn-reject" onclick="rejectRecord('${r._id}','${r.name}')">✗ 拒絕</button>`:''}
       ${r.status!=='pending'?`<button class="btn-outline btn-sm" style="padding:3px 8px;font-size:11px" onclick="resetRecord('${r._id}')">↩ 待審</button>`:''}
@@ -917,6 +923,16 @@ function renderAdminTable(list) {
       <td style="color:var(--muted)">${r.note||'—'}</td><td>${sb}</td><td style="white-space:nowrap">${acts}</td></tr>`;
   }).join('');
 }
+function editRecordEmpid(id, currentEmpid) {
+  const newEmpid = prompt('修改工號：', currentEmpid === '待填入' ? '' : currentEmpid);
+  if (newEmpid === null) return;
+  dbUpdate('shifts', id, { empid: newEmpid.trim().toUpperCase() || '待填入' }).then(async () => {
+    allRecords = await dbGetAll('shifts');
+    renderAdminTable(allRecords);
+    toast('✓ 工號已更新');
+  });
+}
+
 async function approveRecord(id,empid,name,date,shift) {
   try {
     await dbUpdate('shifts',id,{status:'approved'});
