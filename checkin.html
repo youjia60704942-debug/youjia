@@ -911,6 +911,11 @@ async function submitSurvey() {
     if (data.success) {
       document.getElementById('surveySection').style.display = 'none';
       showToast('✅ 下班打卡成功！', 'success');
+      // 鎖定下班按鈕
+      const btnOut = document.getElementById('btnOut');
+      btnOut.disabled = true;
+      btnOut.style.opacity = '0.4';
+      btnOut.title = '今日已打下班卡';
       loadTodayRecord();
     } else {
       showToast('❌ ' + (data.error || '打卡失敗'), 'error');
@@ -942,11 +947,29 @@ async function loadTodayRecord() {
       todayRecord = data;
       const section = document.getElementById('recordSection');
       section.style.display = 'block';
-      document.getElementById('recShift').textContent = data.shift || '--';
-      document.getElementById('recIn').textContent   = data.clockIn || '--:--';
-      document.getElementById('recOut').textContent  = data.clockOut || '--:--';
+      document.getElementById('recShift').textContent  = data.shift || '--';
+      document.getElementById('recIn').textContent    = data.clockIn || '--:--';
+      document.getElementById('recOut').textContent   = data.clockOut || '--:--';
       document.getElementById('recHours').textContent = data.hours ? data.hours + ' 小時' : '--';
       document.getElementById('recSalary').textContent = data.salary ? 'NT$ ' + data.salary.toLocaleString() : '--';
+
+      // 已打上班卡 → 鎖定上班按鈕
+      const btnIn  = document.getElementById('btnIn');
+      const btnOut = document.getElementById('btnOut');
+      btnIn.disabled = true;
+      btnIn.style.opacity = '0.4';
+      btnIn.title = '今日已打上班卡（' + data.clockIn + '）';
+
+      // 已打下班卡 → 兩個按鈕都鎖定
+      if (data.clockOut) {
+        btnOut.disabled = true;
+        btnOut.style.opacity = '0.4';
+        btnOut.title = '今日已打下班卡（' + data.clockOut + '）';
+      } else if (inRange && clientName) {
+        // 未打下班卡且在範圍內 → 開放下班按鈕
+        btnOut.disabled = false;
+        btnOut.style.opacity = '';
+      }
     }
   } catch(e) {}
 }
