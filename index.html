@@ -618,7 +618,7 @@ function changePw() {
 }
 
 // 工號查詢
-function lookupByEmpid() {
+async function lookupByEmpid() {
   const val = document.getElementById('s-empid').value.trim().toUpperCase();
   if (!val) { toast('⚠ 請輸入工號', true); return; }
   const emp = allEmployees.find(e => e.empid && e.empid.toUpperCase() === val);
@@ -627,24 +627,29 @@ function lookupByEmpid() {
   document.getElementById('confirm-name').textContent = emp.name;
   document.getElementById('identity-confirm').style.display = 'block';
   document.getElementById('shift-fields').style.display = 'none';
-  // 根據員工的派工客戶更新選單
-  updateClientSelectForEmp(emp);
+  // 從 Sheets F欄讀取派工客戶
+  await updateClientSelectFromSheets(emp.name);
 }
 
-function updateClientSelectForEmp(emp) {
+async function updateClientSelectFromSheets(empName) {
   const sc = document.getElementById('s-client');
-  // emp.clients 是逗號分隔的客戶名稱（從 Firestore 讀到）
-  const empClients = emp.clients ? emp.clients.split(',').map(s=>s.trim()).filter(s=>s) : [];
-  if (!empClients.length) {
-    // 員工沒有設定派工客戶
-    sc.innerHTML = '<option value="">（尚未設定派工客戶，請聯繫管理員）</option>';
+  sc.innerHTML = '<option value="">讀取中…</option>';
+  sc.disabled = true;
+  try {
+    const res  = await fetch(`${GAS_URL}?action=get_emp_clients_by_name&name=${encodeURIComponent(empName)}`);
+    const data = await res.json();
+    const clients = data.clients || [];
+    if (!clients.length) {
+      sc.innerHTML = '<option value="">（尚未設定派工客戶，請聯繫管理員）</option>';
+      sc.disabled = true;
+    } else {
+      sc.innerHTML = '<option value="">請選擇客戶</option>' +
+        clients.map(c => `<option value="${c}">${c}</option>`).join('');
+      sc.disabled = false;
+    }
+  } catch(e) {
+    sc.innerHTML = '<option value="">讀取失敗，請重試</option>';
     sc.disabled = true;
-  } else {
-    const opts = empClients
-      .filter(name => allClients.find(c => c.name === name)) // 只顯示客戶清單裡有的
-      .map(name => `<option value="${name}">${name}</option>`).join('');
-    sc.innerHTML = '<option value="">請選擇客戶</option>' + (opts || '<option value="">（派工客戶未設定，請聯繫管理員）</option>');
-    sc.disabled = false;
   }
 }
 function confirmNameInput() {
