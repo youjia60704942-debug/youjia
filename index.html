@@ -177,7 +177,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
   <div id="pg-staff" class="page">
     <div class="card" id="form-card">
       <div class="card-title">📋 個人報班登記</div>
-      <div class="info-box">💡 請輸入工號後按 Enter 或點「查詢」帶入資料</div>
+      <div class="info-box">💡 請輸入工號後按 Enter 或點「查詢」帶入資料；無工號者可直接填寫姓名</div>
       <div class="form-row">
         <div class="form-group"><label>工號</label>
           <div style="display:flex;gap:8px;">
@@ -621,14 +621,31 @@ function changePw() {
 async function lookupByEmpid() {
   const val = document.getElementById('s-empid').value.trim().toUpperCase();
   if (!val) { toast('⚠ 請輸入工號', true); return; }
-  const emp = allEmployees.find(e => e.empid && e.empid.toUpperCase() === val);
-  if (!emp) { toast('⚠ 找不到此工號，請確認後重試', true); document.getElementById('s-name').value = ''; return; }
-  document.getElementById('s-name').value = emp.name;
-  document.getElementById('confirm-name').textContent = emp.name;
-  document.getElementById('identity-confirm').style.display = 'block';
-  document.getElementById('shift-fields').style.display = 'none';
-  // 從 Sheets F欄讀取派工客戶
-  await updateClientSelectFromSheets(emp.name);
+
+  const btn = document.querySelector('.btn.btn-outline[onclick="lookupByEmpid()"]');
+  if (btn) { btn.textContent = '查詢中…'; btn.disabled = true; }
+
+  try {
+    // 從 Sheets A欄查工號（不從 Firestore，避免員工亂猜）
+    const res  = await fetch(`${GAS_URL}?action=lookup_empid&empid=${encodeURIComponent(val)}`);
+    const data = await res.json();
+
+    if (!data.found) {
+      toast('⚠ 找不到此工號，請確認後重試', true);
+      document.getElementById('s-name').value = '';
+      return;
+    }
+
+    document.getElementById('s-name').value = data.name;
+    document.getElementById('confirm-name').textContent = data.name;
+    document.getElementById('identity-confirm').style.display = 'block';
+    document.getElementById('shift-fields').style.display = 'none';
+    await updateClientSelectFromSheets(data.name);
+  } catch(e) {
+    toast('⚠ 查詢失敗，請稍後再試', true);
+  } finally {
+    if (btn) { btn.textContent = '查詢'; btn.disabled = false; }
+  }
 }
 
 async function updateClientSelectFromSheets(empName) {
