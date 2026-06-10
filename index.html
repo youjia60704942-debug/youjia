@@ -280,6 +280,45 @@ tr:hover td{background:rgba(201,168,76,.04);}
     </div>
   </div>
 
+  <!-- 今日出勤 -->
+  <div id="pg-attend" class="page">
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <span>📋 今日出勤記錄</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span id="attend-sync" class="sync-st"></span>
+          <button class="btn btn-outline btn-sm" onclick="loadAttendUI()">🔄 重新整理</button>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+        <div class="form-group" style="margin:0">
+          <label style="font-size:12px;color:var(--muted)">查詢日期</label>
+          <input type="date" id="attend-date" onchange="loadAttendUI()" style="padding:8px 12px;font-size:13px;">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:12px;color:var(--muted)">客戶篩選</label>
+          <select id="attend-client" onchange="loadAttendUI()" style="padding:8px 12px;font-size:13px;">
+            <option value="">全部客戶</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>姓名</th><th>客戶</th><th>班別</th>
+              <th>上班</th><th>下班</th><th>正常工時</th><th>加班工時</th><th>實領</th>
+            </tr>
+          </thead>
+          <tbody id="attend-tbody"></tbody>
+        </table>
+      </div>
+      <div id="attend-summary" style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:10px;font-size:13px;display:none">
+        <span id="attend-total"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- 客戶管理 -->
   <div id="pg-client" class="page">
     <div id="client-panel">
@@ -550,6 +589,7 @@ function enterRole(role) {
     nav.innerHTML = `
       <button class="active" onclick="showPage('pg-admin',this)">報班審核</button>
       <button onclick="showPage('pg-emp',this)">員工資料庫</button>
+      <button onclick="showPage('pg-attend',this)">📋 今日出勤</button>
       <button onclick="showPage('pg-client',this)">🏭 客戶管理</button>
       <button onclick="showPage('pg-resume',this)">📄 員工履歷</button>
       <button onclick="showPage('pg-export',this)">匯出名單</button>
@@ -577,7 +617,7 @@ function showPage(id, btn) {
   document.getElementById(id).classList.add('active');
   if (btn) { document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
   // 管理師頁面若未登入則跳回登入頁
-  if (['pg-emp','pg-export','pg-pw','pg-resume','pg-client'].includes(id) && !unlocked.admin) {
+  if (['pg-emp','pg-export','pg-pw','pg-resume','pg-client','pg-attend'].includes(id) && !unlocked.admin) {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.getElementById('pg-admin').classList.add('active');
     toast('⚠ 請先登入管理師後台', true); return;
@@ -586,6 +626,7 @@ function showPage(id, btn) {
   if (id==='pg-emp') loadEmpUI();
   if (id==='pg-resume') loadResumeList();
   if (id==='pg-client') loadClientUI();
+  if (id==='pg-attend') loadAttendUI();
 }
 
 // Auth - 單一密碼登入，解鎖所有管理功能
@@ -703,6 +744,80 @@ async function gasPost(body) {
   const qs = new URLSearchParams(params).toString();
   const res = await fetch(`${GAS_URL}?${qs}`, { redirect: 'follow' });
   return res.json();
+}
+
+// ── 今日出勤 ──────────────────────────────────────────────
+async function loadAttendUI() {
+  // 預設今天
+  const dateEl = document.getElementById('attend-date');
+  if (!dateEl.value) dateEl.value = todayStr();
+  const date   = dateEl.value;
+  const client = document.getElementById('attend-client').value;
+
+  setSS('attend-sync', 'loading', '讀取中…');
+
+  try {
+    const params = `action=get_daily_attend&date=${encodeURIComponent(date)}` +
+      (client ? `&client=${encodeURIComponent(client)}` : '');
+    const res  = await fetch(`${GAS_URL}?${params}`);
+    const data = await res.json();
+    const rows = data.records || [];
+
+    // 更新客戶篩選選單
+    const clientSel = document.getElementById('attend-client');
+    const cur = clientSel.value;
+    const clientOpts = allClients.length
+      ? allClients.map(c=>`<option value="${c.name}">${c.name}</option>`).join('')
+      : '';
+    clientSel.innerHTML = '<option value="">全部客戶</option>' + clientOpts;
+    clientSel.value = cur;
+
+    const tbody = document.getElementById('attend-tbody');
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="9" class="empty">📭 ${date} 無出勤記錄</td></tr>`;
+      document.getElementById('attend-summary').style.display = 'none';
+      setSS('attend-sync', 'done', '共 0 筆');
+      return;
+    }
+
+    // 解析上下班時間（從備註欄）
+    tbody.innerHTML = rows.map((r, i) => {
+      const note   = r.note || '';
+      const times  = note.match(/(\d{2}:\d{2})-(\d{2}:\d{2})/);
+      const clockIn  = times ? times[1] : '—';
+      const clockOut = times ? times[2] : '尚未下班';
+      const outStyle = clockOut === '尚未下班' ? 'color:#f59e0b;font-weight:600' : '';
+      return `<tr>
+        <td>${i+1}</td>
+        <td><strong>${r.name||'—'}</strong></td>
+        <td style="font-size:12px;color:var(--muted)">${r.client||'—'}</td>
+        <td><span class="badge-${r.shift==='日班'?'approved':'pending'}" style="font-size:11px">${r.shift||'—'}</span></td>
+        <td style="font-family:monospace;color:#4f8ef7">${clockIn}</td>
+        <td style="font-family:monospace;${outStyle}">${clockOut}</td>
+        <td style="font-family:monospace">${parseFloat(r.normalHours||0).toFixed(1)} hr</td>
+        <td style="font-family:monospace;color:#34d399">${parseFloat(r.overtimeHours||0)>0?parseFloat(r.overtimeHours).toFixed(1)+' hr':'—'}</td>
+        <td style="font-family:monospace">NT$ ${parseInt(r.salary||0).toLocaleString()}</td>
+      </tr>`;
+    }).join('');
+
+    // 統計
+    const totalNormal = rows.reduce((s,r)=>s+(parseFloat(r.normalHours)||0),0);
+    const totalOt     = rows.reduce((s,r)=>s+(parseFloat(r.overtimeHours)||0),0);
+    const totalSalary = rows.reduce((s,r)=>s+(parseInt(r.salary)||0),0);
+    const notOut      = rows.filter(r=>!(r.note||'').match(/\d{2}:\d{2}-\d{2}:\d{2}/)).length;
+    document.getElementById('attend-summary').style.display = 'block';
+    document.getElementById('attend-total').innerHTML =
+      `出勤 <strong>${rows.length}</strong> 人・` +
+      `正常工時合計 <strong>${totalNormal.toFixed(1)}</strong> hr・` +
+      `加班 <strong>${totalOt.toFixed(1)}</strong> hr・` +
+      `薪資合計 <strong>NT$ ${totalSalary.toLocaleString()}</strong>` +
+      (notOut ? `・<span style="color:#f59e0b">⚠ ${notOut} 人尚未下班打卡</span>` : '');
+
+    setSS('attend-sync', 'done', `共 ${rows.length} 筆`);
+  } catch(e) {
+    setSS('attend-sync', 'err', '讀取失敗');
+    toast('❌ 讀取失敗', true);
+  }
 }
 
 async function loadClientUI() {
