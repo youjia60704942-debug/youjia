@@ -143,6 +143,15 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--navy
   <div id="line-ok" class="line-ok" style="display:none">✅ 已透過 LINE Bot 連結，LINE 帳號將自動綁定</div>
   <div class="row row2">
     <div class="fld" id="f-name"><label>姓名<span class="req">*</span></label><input id="name" placeholder="請輸入真實姓名"><div class="err-text">請輸入姓名</div></div>
+    <div class="fld" id="f-gender"><label>性別<span class="req">*</span></label>
+      <select id="gender">
+        <option value="">請選擇</option>
+        <option value="男">男</option>
+        <option value="女">女</option>
+        <option value="其他">其他</option>
+      </select>
+      <div class="err-text">請選擇性別</div>
+    </div>
     <div class="fld"><label>工號</label><input id="empid" placeholder="例：Z082（新進員工若不知道請留空）"><div class="hint">💡 不知道工號沒關係，管理師將協助填入</div></div>
   </div>
   <div class="row row2">
@@ -338,7 +347,8 @@ function validateBankAcct(v) { return /^\d{10,16}$/.test(v); }
 
 const rules = {
   1: [
-    {id:'name',  fid:'f-name',  check: v => v !== '',      msg:'請輸入姓名'},
+    {id:'name',   fid:'f-name',   check: v => v !== '',      msg:'請輸入姓名'},
+    {id:'gender', fid:'f-gender', check: v => v !== '',      msg:'請選擇性別'},
     {id:'idno',  fid:'f-idno',  check: v => validateIdno(v), msg:'身分證字號格式或檢查碼錯誤，請確認'},
     {id:'birth', fid:'f-birth', check: v => v !== '',      msg:'請選擇出生日期'},
     {id:'addr1', fid:'f-addr1', check: v => v !== '',      msg:'請輸入戶籍地址'},
@@ -436,7 +446,7 @@ async function submit() {
   const bnameClean = bnameRaw ? bnameRaw.split('|')[0] : '';
 
   const data = {
-    name: g('name'), empid: g('empid').toUpperCase(), idno: g('idno').toUpperCase(),
+    name: g('name'), gender: g('gender'), empid: g('empid').toUpperCase(), idno: g('idno').toUpperCase(),
     birth: g('birth'), addr1: g('addr1'), addr2: g('addr2'),
     phone: g('phone'), phone2: g('phone2'),
     ecName: g('ec-name'), ecRel: g('ec-rel'), ecPhone: g('ec-phone'),
