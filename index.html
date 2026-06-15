@@ -553,6 +553,7 @@ const MAKE_WEBHOOK = 'https://hook.us2.make.com/llcib8qu6e0cjvgmandx2a9vozuakps9
 let ADMIN_PW = localStorage.getItem('houjia_admin_pw') || 'admin888';
 
 let allRecords = [], allEmployees = [], activeDateTab = null;
+let allClients = [];
 let unlocked = { admin: false, emp: false, export: false };
 
 // DB Ready
@@ -568,7 +569,6 @@ async function onDbReady() {
     allClients = cd.clients || [];
   } catch(e) { allClients = []; }
   refreshClientSelects();
-  renderEmpTable(); // 員工頁篩選初始化
 }
 document.addEventListener('db-ready', onDbReady);
 (function waitDb() {
@@ -793,7 +793,6 @@ function modalAcFill() {
 // ── 客戶管理（資料來源：Google Sheets，透過 Apps Script）──────
 let empidVerified = false; // 工號是否經過系統驗證
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxXs2mDh1cZYy64cFJ87VGqiTl49wbTlPudoevmojhudp0diUZhffLrRWfkC8ZzRGef/exec';
-let allClients = [];
 
 async function gasGet(params) {
   const qs  = new URLSearchParams(params).toString();
