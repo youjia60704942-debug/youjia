@@ -630,7 +630,8 @@ function enterRole(role) {
   const nav = document.getElementById('main-nav');
   if (role==='staff') {
     nav.innerHTML = '';
-    document.getElementById('s-date').value = todayStr();
+    if (document.getElementById('s-date')) document.getElementById('s-date').value = todayStr();
+    if (typeof initDatePicker === 'function') initDatePicker();
     showPage('pg-staff');
   } else {
     nav.innerHTML = `
@@ -1003,7 +1004,7 @@ async function confirmIdentity(yes) {
   if (yes) {
     document.getElementById('identity-confirm').style.display = 'none';
     document.getElementById('shift-fields').style.display = 'block';
-    document.getElementById('s-date').value = todayStr();
+    initDatePicker(); // 初始化多日期選擇器
     // 有姓名就查派工客戶（不管有無工號）
     const name = document.getElementById('s-name').value.trim();
     if (name) {
