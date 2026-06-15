@@ -131,34 +131,15 @@ tr:hover td{background:rgba(201,168,76,.04);}
 #db-overlay.hidden{display:none;}
 .info-box{background:#fff8e0;border:1px solid #f0d060;border-radius:8px;padding:12px 16px;font-size:13px;color:#7a5a00;margin-bottom:14px;line-height:1.6;}
 .empty{text-align:center;padding:32px;color:var(--muted);font-size:14px;}
-/* 漢堡選單按鈕 */
-.menu-toggle{display:none;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:8px;line-height:1;}
-@media(max-width:768px){
+@media(max-width:640px){
   .form-row,.form-row-3{grid-template-columns:1fr;}
   .stats{grid-template-columns:1fr 1fr;}
   header{padding:0 12px;}
   .page{padding:16px 12px;}
   .card{padding:16px 14px;}
+  nav button{padding:5px 8px;font-size:11px;}
   .role-cards{flex-direction:column;align-items:center;}
   .role-card{width:100%;max-width:300px;}
-  /* 隱藏桌面導覽，顯示漢堡按鈕 */
-  nav#main-nav{
-    display:none;
-    position:fixed;top:64px;left:0;right:0;
-    background:var(--navy);
-    flex-direction:column;
-    padding:12px 0;
-    z-index:200;
-    box-shadow:0 8px 24px rgba(0,0,0,0.3);
-  }
-  nav#main-nav.open{display:flex;}
-  nav#main-nav button{
-    width:100%;text-align:left;
-    padding:14px 24px;font-size:15px;
-    border-radius:0;border-bottom:1px solid rgba(255,255,255,0.06);
-  }
-  .menu-toggle{display:block;}
-  .h-badge{display:none;}
 }
 </style>
 </head>
@@ -189,33 +170,25 @@ tr:hover td{background:rgba(201,168,76,.04);}
   <header>
     <div class="h-logo"><div class="h-mark">優</div><div class="h-name">優佳人力資源</div></div>
     <nav id="main-nav"></nav>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <div class="h-badge"><div class="dot"></div><span id="role-label"></span></div>
-      <button class="menu-toggle" onclick="toggleMenu()" id="menu-btn">☰</button>
-    </div>
+    <div class="h-badge"><div class="dot"></div><span id="role-label"></span></div>
   </header>
 
   <!-- 員工報班 -->
   <div id="pg-staff" class="page">
     <div class="card" id="form-card">
       <div class="card-title">📋 個人報班登記</div>
-      <div class="info-box">💡 請輸入工號後按 Enter 或點「查詢」帶入資料；無工號者可直接填寫姓名</div>
+      <div class="info-box">💡 輸入工號或姓名，系統會自動帶入您的資料</div>
       <div class="form-row">
         <div class="form-group"><label>工號</label>
-          <div style="display:flex;gap:8px;">
-            <input type="text" id="s-empid" placeholder="輸入工號後按 Enter（選填）" autocomplete="off"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();lookupByEmpid();}"
-              oninput="empidVerified=false;"
-              style="flex:1;">
-            <button class="btn btn-outline" onclick="lookupByEmpid()" style="padding:12px 14px;white-space:nowrap;">查詢</button>
+          <div class="autocomplete-wrap">
+            <input type="text" id="s-empid" placeholder="工號（選填，不知道可留空）" oninput="acSearch('empid')" autocomplete="off">
+            <div class="ac-list" id="ac-empid" style="display:none"></div>
           </div>
         </div>
         <div class="form-group"><label>姓名</label>
-          <div style="display:flex;gap:8px;">
-            <input type="text" id="s-name" placeholder="輸入姓名或由工號帶入" autocomplete="off"
-              style="background:var(--surface);color:var(--text);flex:1;"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();confirmNameInput();}">
-            <button class="btn btn-outline" onclick="confirmNameInput()" style="padding:12px 14px;white-space:nowrap;">確認</button>
+          <div class="autocomplete-wrap">
+            <input type="text" id="s-name" placeholder="輸入姓名" oninput="acSearch('name')" autocomplete="off">
+            <div class="ac-list" id="ac-name" style="display:none"></div>
           </div>
         </div>
       </div>
@@ -233,13 +206,6 @@ tr:hover td{background:rgba(201,168,76,.04);}
       <div id="shift-fields" style="display:none">
         <div class="form-row">
           <div class="form-group"><label>報班日期</label><input type="date" id="s-date"></div>
-          <div class="form-group"><label>派工客戶</label>
-            <select id="s-client" disabled style="background:#f8f8f8;color:var(--muted);">
-              <option value="">請先輸入工號</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
           <div class="form-group"><label>班別</label>
             <select id="s-shift"><option value="">請選擇</option><option value="日班">日班</option><option value="晚班">晚班</option></select>
           </div>
@@ -285,7 +251,10 @@ tr:hover td{background:rgba(201,168,76,.04);}
       <div class="card">
         <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <span>📅 報班審核</span>
-          <div style="display:flex;gap:7px;align-items:center;">
+          <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+            <select id="admin-client-filter" onchange="renderAdmin()" style="padding:5px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);">
+              <option value="">全部客戶</option>
+            </select>
             <div id="admin-sync" class="sync-st"></div>
             <button class="btn btn-outline btn-sm" onclick="openAddModal()">＋ 補登</button>
             <button class="btn btn-outline btn-sm" onclick="loadRecords()">↻ 重新整理</button>
@@ -296,82 +265,6 @@ tr:hover td{background:rgba(201,168,76,.04);}
           <table>
             <thead><tr><th>#</th><th>工號</th><th>姓名</th><th>班別</th><th>日期</th><th>備註</th><th>狀態</th><th>操作</th></tr></thead>
             <tbody id="admin-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 今日出勤 -->
-  <div id="pg-attend" class="page">
-    <div class="card">
-      <div class="card-title" style="justify-content:space-between;">
-        <span>📋 今日出勤記錄</span>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <span id="attend-sync" class="sync-st"></span>
-          <button class="btn btn-outline btn-sm" onclick="loadAttendUI()">🔄 重新整理</button>
-        </div>
-      </div>
-      <div style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-        <div class="form-group" style="margin:0">
-          <label style="font-size:12px;color:var(--muted)">查詢日期</label>
-          <input type="date" id="attend-date" onchange="loadAttendUI()" style="padding:8px 12px;font-size:13px;">
-        </div>
-        <div class="form-group" style="margin:0">
-          <label style="font-size:12px;color:var(--muted)">客戶篩選</label>
-          <select id="attend-client" onchange="loadAttendUI()" style="padding:8px 12px;font-size:13px;">
-            <option value="">全部客戶</option>
-          </select>
-        </div>
-      </div>
-      <div class="tbl-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th><th>工號</th><th>姓名</th><th>客戶</th><th>班別</th>
-              <th>上班</th><th>下班</th><th>正常工時</th><th>加班工時</th><th>實領</th><th>狀態</th>
-            </tr>
-          </thead>
-          <tbody id="attend-tbody"></tbody>
-        </table>
-      </div>
-      <div id="attend-summary" style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:10px;font-size:13px;display:none">
-        <span id="attend-total"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 客戶管理 -->
-  <div id="pg-client" class="page">
-    <div id="client-panel">
-      <div class="card">
-        <div class="card-title">🏭 新增客戶</div>
-        <div class="form-row">
-          <div class="form-group"><label>客戶名稱</label><input type="text" id="c-name" placeholder="例：雙葉、台積電…"></div>
-          <div class="form-group"><label>主管查看密碼</label><input type="text" id="c-pw" placeholder="設定客戶主管登入密碼"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>緯度</label><input type="text" id="c-lat" placeholder="例：25.046265" inputmode="decimal"></div>
-          <div class="form-group"><label>經度</label><input type="text" id="c-lng" placeholder="例：121.360041" inputmode="decimal"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>打卡範圍（公尺）</label><input type="number" id="c-radius" placeholder="預設 100" value="100" min="50" max="1000"></div>
-          <div class="form-group"><label>備註（選填）</label><input type="text" id="c-note" placeholder="地址、聯絡人…"></div>
-        </div>
-        <div class="info-box" style="margin-bottom:12px">
-          💡 座標取得方式：Google Maps 找到公司位置 → 右鍵 → 點第一行數字即可複製
-        </div>
-        <button class="btn btn-primary" onclick="saveClient()">新增客戶</button>
-      </div>
-      <div class="card">
-        <div class="card-title" style="justify-content:space-between;">
-          <span>🏭 客戶清單</span>
-          <span id="client-sync" class="sync-st"></span>
-        </div>
-        <div class="tbl-wrap">
-          <table>
-            <thead><tr><th>#</th><th>客戶名稱</th><th>座標</th><th>範圍</th><th>主管密碼</th><th>查看連結</th><th>操作</th></tr></thead>
-            <tbody id="client-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -394,9 +287,14 @@ tr:hover td{background:rgba(201,168,76,.04);}
         </div>
       </div>
       <div class="card">
-        <div class="card-title" style="justify-content:space-between;">
+        <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <span>👥 員工名單</span>
-          <span id="emp-sync" class="sync-st"></span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="emp-client-filter" onchange="renderEmpTable()" style="padding:5px 10px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);">
+              <option value="">全部客戶</option>
+            </select>
+            <span id="emp-sync" class="sync-st"></span>
+          </div>
         </div>
         <div class="tbl-wrap">
           <table>
@@ -418,8 +316,6 @@ tr:hover td{background:rgba(201,168,76,.04);}
           <div class="form-group"><label>派工客戶</label>
             <select id="ex-client" onchange="previewExport()"><option value="">請選擇客戶</option></select>
           </div>
-        </div>
-        <div class="form-row">
           <div class="form-group"><label>班別</label>
             <select id="ex-shift" onchange="previewExport()"><option value="日班">日班</option><option value="晚班">晚班</option></select>
           </div>
@@ -541,24 +437,11 @@ let allRecords = [], allEmployees = [], activeDateTab = null;
 let unlocked = { admin: false, emp: false, export: false };
 
 // DB Ready
-let _dbInitDone = false;
-async function onDbReady() {
-  if (_dbInitDone) return;
-  _dbInitDone = true;
+document.addEventListener('db-ready', async () => {
   document.getElementById('db-overlay').classList.add('hidden');
   document.getElementById('landing').style.display = 'flex';
   allEmployees = await dbGetAll('employees').catch(() => []);
-  try {
-    const cd = await fetch(GAS_URL + '?action=list_clients').then(r=>r.json());
-    allClients = cd.clients || [];
-  } catch(e) { allClients = []; }
-  refreshClientSelects();
-}
-document.addEventListener('db-ready', onDbReady);
-(function waitDb() {
-  if (window._dbReady) { onDbReady(); return; }
-  setTimeout(waitDb, 100);
-})();
+});
 setTimeout(() => { if (!window._dbReady) document.getElementById('db-overlay').innerHTML = '<p style="color:#f99;padding:20px">⚠ 資料庫連線失敗</p>'; }, 8000);
 
 // DB helpers
@@ -579,8 +462,17 @@ async function dbDelete(c, id) { return await window._fns.deleteDoc(window._fns.
 function todayStr() { return new Date().toISOString().slice(0,10); }
 function fmtDate(ds) {
   if (!ds) return '';
-  const d = new Date(ds+'T00:00:00'), w=['日','一','二','三','四','五','六'];
+  const d = new Date(ds.replace(/\//g,'-')+'T00:00:00');
+  if (isNaN(d)) return ds;
+  const w=['日','一','二','三','四','五','六'];
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}（${w[d.getDay()]}）`;
+}
+function fmtDateShort(ds) {
+  if (!ds) return '';
+  const d = new Date(ds.replace(/\//g,'-')+'T00:00:00');
+  if (isNaN(d)) return ds;
+  const w=['日','一','二','三','四','五','六'];
+  return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}（${w[d.getDay()]}）`;
 }
 function toast(msg, err) {
   const t = document.getElementById('toast');
@@ -611,8 +503,6 @@ function enterRole(role) {
     nav.innerHTML = `
       <button class="active" onclick="showPage('pg-admin',this)">報班審核</button>
       <button onclick="showPage('pg-emp',this)">員工資料庫</button>
-      <button onclick="showPage('pg-attend',this)">📋 今日出勤</button>
-      <button onclick="showPage('pg-client',this)">🏭 客戶管理</button>
       <button onclick="showPage('pg-resume',this)">📄 員工履歷</button>
       <button onclick="showPage('pg-export',this)">匯出名單</button>
       <button onclick="showPage('pg-pw',this)">🔑 修改密碼</button>
@@ -634,27 +524,12 @@ function adminLogout() {
   document.getElementById('admin-pw').value = '';
   goBack();
 }
-function toggleMenu() {
-  const nav = document.getElementById('main-nav');
-  const btn = document.getElementById('menu-btn');
-  nav.classList.toggle('open');
-  btn.textContent = nav.classList.contains('open') ? '✕' : '☰';
-}
-// 點選頁面後關閉選單
-function closeMenu() {
-  const nav = document.getElementById('main-nav');
-  const btn = document.getElementById('menu-btn');
-  nav.classList.remove('open');
-  if (btn) btn.textContent = '☰';
-}
-
 function showPage(id, btn) {
-  closeMenu(); // 手機版：選完頁面關閉選單
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (btn) { document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
   // 管理師頁面若未登入則跳回登入頁
-  if (['pg-emp','pg-export','pg-pw','pg-resume','pg-client','pg-attend'].includes(id) && !unlocked.admin) {
+  if (['pg-emp','pg-export','pg-pw','pg-resume'].includes(id) && !unlocked.admin) {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.getElementById('pg-admin').classList.add('active');
     toast('⚠ 請先登入管理師後台', true); return;
@@ -662,8 +537,6 @@ function showPage(id, btn) {
   if (id==='pg-export') { setDefaultExportDate(); previewExport(); }
   if (id==='pg-emp') loadEmpUI();
   if (id==='pg-resume') loadResumeList();
-  if (id==='pg-client') loadClientUI();
-  if (id==='pg-attend') loadAttendUI();
 }
 
 // Auth - 單一密碼登入，解鎖所有管理功能
@@ -696,294 +569,35 @@ function changePw() {
   toast('✓ 密碼已成功修改！');
 }
 
-// 工號查詢
-async function lookupByEmpid() {
-  const val = document.getElementById('s-empid').value.trim().toUpperCase();
-  if (!val) { toast('⚠ 請輸入工號', true); return; }
-
-  const btn = document.querySelector('.btn.btn-outline[onclick="lookupByEmpid()"]');
-  if (btn) { btn.textContent = '查詢中…'; btn.disabled = true; }
-
-  try {
-    // 從 Sheets A欄查工號（不從 Firestore，避免員工亂猜）
-    const res  = await fetch(`${GAS_URL}?action=lookup_empid&empid=${encodeURIComponent(val)}`);
-    const data = await res.json();
-
-    if (!data.found) {
-      toast('⚠ 找不到此工號，請確認後重試', true);
-      document.getElementById('s-name').value = '';
-      return;
-    }
-
-    document.getElementById('s-name').value = data.name;
-    document.getElementById('confirm-name').textContent = data.name;
-    document.getElementById('identity-confirm').style.display = 'block';
-    document.getElementById('shift-fields').style.display = 'none';
-    empidVerified = true; // 工號已驗證
-    await updateClientSelectFromSheets(data.name);
-  } catch(e) {
-    toast('⚠ 查詢失敗，請稍後再試', true);
-  } finally {
-    if (btn) { btn.textContent = '查詢'; btn.disabled = false; }
-  }
+// Autocomplete
+function acSearch(field) {
+  const val = document.getElementById(`s-${field==='empid'?'empid':'name'}`).value.trim().toUpperCase();
+  const matches = allEmployees.filter(e =>
+    field==='empid' ? e.empid.toUpperCase().includes(val) : e.name.includes(document.getElementById('s-name').value.trim())
+  ).slice(0,6);
+  const list = document.getElementById(`ac-${field}`);
+  if (!val || !matches.length) { list.style.display='none'; return; }
+  list.innerHTML = matches.map(e =>
+    `<div class="ac-item" onclick="acSelect('${e._id}')"><span>${e.name}</span><span class="ac-sub">${e.empid}</span></div>`
+  ).join('');
+  list.style.display = 'block';
 }
-
-async function updateClientSelectFromSheets(empName) {
-  const sc = document.getElementById('s-client');
-  sc.innerHTML = '<option value="">讀取中…</option>';
-  sc.disabled = true;
-  try {
-    const res  = await fetch(`${GAS_URL}?action=get_emp_clients_by_name&name=${encodeURIComponent(empName)}`);
-    const data = await res.json();
-    const clients = data.clients || [];
-    if (!clients.length) {
-      sc.innerHTML = '<option value="">（尚未設定派工客戶，請聯繫管理員）</option>';
-      sc.disabled = true;
-    } else {
-      sc.innerHTML = '<option value="">請選擇客戶</option>' +
-        clients.map(c => `<option value="${c}">${c}</option>`).join('');
-      sc.disabled = false;
-    }
-  } catch(e) {
-    sc.innerHTML = '<option value="">讀取失敗，請重試</option>';
-    sc.disabled = true;
-  }
-}
-function confirmNameInput() {
-  const name = document.getElementById('s-name').value.trim();
-  if (!name) { toast('⚠ 請輸入姓名', true); return; }
-  document.getElementById('confirm-name').textContent = name;
+function acSelect(id) {
+  const emp = allEmployees.find(e=>e._id===id); if (!emp) return;
+  document.getElementById('s-empid').value = emp.empid;
+  document.getElementById('s-name').value  = emp.name;
+  document.getElementById('ac-empid').style.display='none';
+  document.getElementById('ac-name').style.display='none';
+  // 顯示身分確認提示
+  document.getElementById('confirm-name').textContent = emp.name;
   document.getElementById('identity-confirm').style.display = 'block';
   document.getElementById('shift-fields').style.display = 'none';
 }
-function acSearch() {}
-function acSelect() {}
-function modalAcFill() {
-  const val = document.getElementById('m-empid').value.trim().toUpperCase();
-  const emp = allEmployees.find(e => e.empid && e.empid.toUpperCase() === val);
-  if (emp) document.getElementById('m-name').value = emp.name;
-}
-
-// 客戶管理
-// ── 客戶管理（資料來源：Google Sheets，透過 Apps Script）──────
-let empidVerified = false; // 工號是否經過系統驗證
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxXs2mDh1cZYy64cFJ87VGqiTl49wbTlPudoevmojhudp0diUZhffLrRWfkC8ZzRGef/exec';
-let allClients = [];
-
-async function gasGet(params) {
-  const qs  = new URLSearchParams(params).toString();
-  const res = await fetch(`${GAS_URL}?${qs}`);
-  return res.json();
-}
-async function gasPost(body) {
-  // 用 GET + URL 參數，Apps Script GET 沒有 CORS 問題
-  const params = { ...body };
-  const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${GAS_URL}?${qs}`, { redirect: 'follow' });
-  return res.json();
-}
-
-// ── 今日出勤 ──────────────────────────────────────────────
-async function loadAttendUI() {
-  // 預設今天
-  const dateEl = document.getElementById('attend-date');
-  if (!dateEl.value) dateEl.value = todayStr();
-  const date   = dateEl.value;
-  const client = document.getElementById('attend-client').value;
-
-  setSS('attend-sync', 'loading', '讀取中…');
-
-  try {
-    const params = `action=get_daily_attend&date=${encodeURIComponent(date)}` +
-      (client ? `&client=${encodeURIComponent(client)}` : '');
-    const res  = await fetch(`${GAS_URL}?${params}`);
-    const data = await res.json();
-    const rows = data.records || [];
-
-    // 更新客戶篩選選單
-    const clientSel = document.getElementById('attend-client');
-    const cur = clientSel.value;
-    const clientOpts = allClients.length
-      ? allClients.map(c=>`<option value="${c.name}">${c.name}</option>`).join('')
-      : '';
-    clientSel.innerHTML = '<option value="">全部客戶</option>' + clientOpts;
-    clientSel.value = cur;
-
-    const tbody = document.getElementById('attend-tbody');
-    if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="9" class="empty">📭 ${date} 無出勤記錄</td></tr>`;
-      document.getElementById('attend-summary').style.display = 'none';
-      setSS('attend-sync', 'done', '共 0 筆');
-      return;
-    }
-
-    // 解析上下班時間（從備註欄）
-    tbody.innerHTML = rows.map((r, i) => {
-      const note    = r.note || '';
-      const isPunching = r.status === '打卡中';
-      const times   = note.match(/(\d{2}:\d{2})-(\d{2}:\d{2})/);
-      const clockIn  = isPunching ? (r.clockIn||'—') : (times ? times[1] : '—');
-      const clockOut = isPunching ? '—' : (times ? times[2] : '—');
-      const statusBadge = isPunching
-        ? '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">🟡 打卡中</span>'
-        : '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">✅ 已下班</span>';
-      const rowBg = isPunching ? 'background:rgba(254,243,199,0.3)' : '';
-      return `<tr style="${rowBg}">
-        <td>${i+1}</td>
-        <td style="font-family:monospace;font-size:12px;color:var(--muted)">${r.empid||'—'}</td>
-        <td><strong>${r.name||'—'}</strong></td>
-        <td style="font-size:12px;color:var(--muted)">${r.client||'—'}</td>
-        <td><span class="badge-${r.shift==='日班'?'approved':'pending'}" style="font-size:11px">${r.shift||'—'}</span></td>
-        <td style="font-family:monospace;color:#4f8ef7">${clockIn}</td>
-        <td style="font-family:monospace;color:${isPunching?'#9ca3af':'inherit'}">${clockOut}</td>
-        <td style="font-family:monospace">${isPunching?'—':parseFloat(r.normalHours||0).toFixed(1)+' hr'}</td>
-        <td style="font-family:monospace;color:#34d399">${isPunching||parseFloat(r.overtimeHours||0)===0?'—':parseFloat(r.overtimeHours).toFixed(1)+' hr'}</td>
-        <td style="font-family:monospace">${isPunching?'—':'NT$ '+parseInt(r.salary||0).toLocaleString()}</td>
-        <td>${statusBadge}</td>
-      </tr>`;
-    }).join('');
-
-    // 統計
-    const totalNormal = rows.reduce((s,r)=>s+(parseFloat(r.normalHours)||0),0);
-    const totalOt     = rows.reduce((s,r)=>s+(parseFloat(r.overtimeHours)||0),0);
-    const totalSalary = rows.reduce((s,r)=>s+(parseInt(r.salary)||0),0);
-    const notOut      = rows.filter(r=>!(r.note||'').match(/\d{2}:\d{2}-\d{2}:\d{2}/)).length;
-    const punching = rows.filter(r=>r.status==='打卡中').length;
-    const done     = rows.filter(r=>r.status==='已下班').length;
-    document.getElementById('attend-summary').style.display = 'block';
-    document.getElementById('attend-total').innerHTML =
-      `出勤 <strong>${rows.length}</strong> 人` +
-      (punching ? `・<span style="color:#d97706">🟡 打卡中 <strong>${punching}</strong> 人</span>` : '') +
-      (done     ? `・<span style="color:#065f46">✅ 已下班 <strong>${done}</strong> 人</span>` : '') +
-      `・正常工時 <strong>${totalNormal.toFixed(1)}</strong> hr` +
-      (totalOt>0 ? `・加班 <strong>${totalOt.toFixed(1)}</strong> hr` : '') +
-      `・薪資合計 <strong>NT$ ${totalSalary.toLocaleString()}</strong>`;
-
-    setSS('attend-sync', 'done', `共 ${rows.length} 筆`);
-  } catch(e) {
-    setSS('attend-sync', 'err', '讀取失敗');
-    toast('❌ 讀取失敗', true);
-  }
-}
-
-async function loadClientUI() {
-  setSS('client-sync', 'loading', '讀取中…');
-  try {
-    const data = await gasGet({ action: 'list_clients' });
-    allClients = data.clients || [];
-    setSS('client-sync', 'done', `${allClients.length} 個客戶`);
-    renderClientTable();
-    refreshClientSelects();
-  } catch(e) { setSS('client-sync', 'err', '讀取失敗'); toast('❌ 讀取失敗', true); }
-}
-
-function renderClientTable() {
-  const tbody = document.getElementById('client-tbody');
-  if (!allClients.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty">尚無客戶，請新增</td></tr>'; return;
-  }
-  const base = location.origin + location.pathname.replace('index.html','') + 'client.html';
-  tbody.innerHTML = allClients.map((c, i) => `<tr>
-    <td>${i+1}</td>
-    <td><strong>${c.name||'—'}</strong></td>
-    <td style="font-family:monospace;font-size:11px;color:var(--muted)">${c.lat&&c.lng ? `${parseFloat(c.lat).toFixed(4)},${parseFloat(c.lng).toFixed(4)}` : '<span style="color:#f87171">未設定</span>'}</td>
-    <td style="font-family:monospace;font-size:12px">${c.radius||100}m</td>
-    <td style="font-family:monospace;font-size:13px">${c.pw ? '••••••' : '<span style="color:#f87171">未設定</span>'}</td>
-    <td><a href="${base}?client=${encodeURIComponent(c.name||'')}" target="_blank"
-       style="color:#4f8ef7;font-size:12px;text-decoration:none;">🔗 開啟</a></td>
-    <td style="display:flex;gap:6px;flex-wrap:wrap;">
-      <button class="btn-outline" style="padding:4px 10px;font-size:12px;"
-        onclick="editClientCoord('${c.name}','${c.lat||''}','${c.lng||''}','${c.radius||100}')">座標</button>
-      <button class="btn-outline" style="padding:4px 10px;font-size:12px;"
-        onclick="editClientPw('${c.name}','${c.pw||''}')">密碼</button>
-      <button class="btn-del" onclick="deleteClient('${c.name}')">刪除</button>
-    </td>
-  </tr>`).join('');
-}
-
-async function saveClient() {
-  const name   = document.getElementById('c-name').value.trim();
-  const pw     = document.getElementById('c-pw').value.trim();
-  const lat    = document.getElementById('c-lat').value.trim();
-  const lng    = document.getElementById('c-lng').value.trim();
-  const radius = document.getElementById('c-radius').value.trim() || '100';
-  const note   = document.getElementById('c-note').value.trim();
-  if (!name) { toast('⚠ 請輸入客戶名稱', true); return; }
-  if (!pw)   { toast('⚠ 請設定主管查看密碼', true); return; }
-  if (!lat || !lng) { toast('⚠ 請填入打卡座標', true); return; }
-  if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) { toast('⚠ 座標格式不正確', true); return; }
-  if (allClients.find(c => c.name === name)) { toast('⚠ 此客戶已存在', true); return; }
-  setSS('client-sync', 'loading', '儲存中…');
-  try {
-    const res = await gasPost({ action: 'add_client', name, pw, lat, lng, radius, note });
-    if (!res.success) throw new Error(res.error);
-    allClients = res.clients || [];
-    renderClientTable(); refreshClientSelects();
-    setSS('client-sync', 'done', '已儲存'); toast('✓ 客戶已新增：' + name);
-    ['c-name','c-pw','c-lat','c-lng','c-note'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('c-radius').value = '100';
-  } catch(e) { setSS('client-sync', 'err', '失敗'); toast('❌ 儲存失敗：' + e.message, true); }
-}
-
-async function editClientCoord(name, currentLat, currentLng, currentRadius) {
-  const lat    = prompt(`「${name}」緯度：`, currentLat || '');
-  if (lat === null) return;
-  const lng    = prompt(`「${name}」經度：`, currentLng || '');
-  if (lng === null) return;
-  const radius = prompt(`「${name}」打卡範圍（公尺）：`, currentRadius || '100');
-  if (radius === null) return;
-  if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lng))) { toast('⚠ 座標格式不正確', true); return; }
-  try {
-    const res = await gasPost({ action: 'update_client_coord', name, lat: lat.trim(), lng: lng.trim(), radius: radius.trim() });
-    if (!res.success) throw new Error(res.error);
-    allClients = res.clients || [];
-    renderClientTable(); toast('✓ 座標已更新');
-  } catch(e) { toast('❌ 更新失敗', true); }
-}
-
-async function editClientPw(name, currentPw) {
-  const newPw = prompt(`設定「${name}」的主管查看密碼：`, currentPw || '');
-  if (newPw === null) return;
-  if (!newPw.trim()) { toast('⚠ 密碼不能為空', true); return; }
-  try {
-    const res = await gasPost({ action: 'update_client_pw', name, pw: newPw.trim() });
-    if (!res.success) throw new Error(res.error);
-    allClients = res.clients || [];
-    renderClientTable(); toast('✓ 密碼已更新');
-  } catch(e) { toast('❌ 更新失敗', true); }
-}
-
-async function deleteClient(name) {
-  if (!confirm(`確定刪除客戶「${name}」？
-刪除後該客戶的打卡連結將無法使用。`)) return;
-  try {
-    const res = await gasPost({ action: 'delete_client', name });
-    if (!res.success) throw new Error(res.error);
-    allClients = res.clients || [];
-    renderClientTable(); refreshClientSelects(); toast('✓ 已刪除');
-  } catch(e) { toast('❌ 刪除失敗', true); }
-}
-
-function refreshClientSelects() {
-  const sc = document.getElementById('s-client');
-  const ec = document.getElementById('ex-client');
-  const opts = allClients.length
-    ? allClients.map(c => `<option value="${c.name}">${c.name}</option>`).join('')
-    : '<option value="">尚無客戶（請先至管理後台新增）</option>';
-  if (sc) sc.innerHTML = '<option value="">請選擇客戶</option>' + opts;
-  if (ec) ec.innerHTML = '<option value="">請選擇客戶</option>' + opts;
-}
-
-async function confirmIdentity(yes) {
+function confirmIdentity(yes) {
   if (yes) {
     document.getElementById('identity-confirm').style.display = 'none';
     document.getElementById('shift-fields').style.display = 'block';
     document.getElementById('s-date').value = todayStr();
-    // 有姓名就查派工客戶（不管有無工號）
-    const name = document.getElementById('s-name').value.trim();
-    if (name) {
-      await updateClientSelectFromSheets(name);
-    }
   } else {
     // 清空重新輸入
     document.getElementById('s-empid').value = '';
@@ -991,10 +605,9 @@ async function confirmIdentity(yes) {
     document.getElementById('identity-confirm').style.display = 'none';
     document.getElementById('shift-fields').style.display = 'none';
     document.getElementById('s-empid').focus();
-  empidVerified = false;
   }
 }
-// autocomplete 已移除，舊監聽器清除
+document.addEventListener('click', e => { if (!e.target.closest('.autocomplete-wrap')) { document.getElementById('ac-empid').style.display='none'; document.getElementById('ac-name').style.display='none'; } });
 function modalAcFill() {
   const val = document.getElementById('m-empid').value.trim().toUpperCase();
   const emp = allEmployees.find(e=>e.empid.toUpperCase()===val);
@@ -1006,31 +619,28 @@ async function staffSubmit() {
   const name=document.getElementById('s-name').value.trim();
   const empid=document.getElementById('s-empid').value.trim().toUpperCase();
   const date=document.getElementById('s-date').value;
-  const client=document.getElementById('s-client').value;
   const shift=document.getElementById('s-shift').value;
   const note=document.getElementById('s-note').value.trim();
 
-  // 有填工號但沒通過系統查詢 → 拒絕
-  if (empid && !empidVerified) { toast('⚠ 工號未經查詢驗證，請點「查詢」按鈕確認工號', true); return; }
-  if (!name)  { toast('⚠ 請輸入姓名或工號', true); return; }
-  if (!date||!client||!shift) { toast('⚠ 請填寫日期、客戶及班別', true); return; }
+  // 姓名、日期、班別為必填；工號選填
+  if (!name||!date||!shift) { toast('⚠ 請填寫姓名、日期及班別',true); return; }
 
   setSS('staff-sync','loading','確認中…');
   try {
     const fresh = await dbGetAll('shifts');
     // 重複報班判斷：有工號用工號比對，沒工號用姓名比對
     const dup = empid
-      ? fresh.find(r=>r.empid===empid&&r.date===date&&r.shift===shift&&r.client===client)
-      : fresh.find(r=>r.name===name&&r.date===date&&r.shift===shift&&r.client===client);
+      ? fresh.find(r=>r.empid===empid&&r.date===date&&r.shift===shift)
+      : fresh.find(r=>r.name===name&&r.date===date&&r.shift===shift);
     if (dup) { setSS('staff-sync','err','重複報班'); toast('⚠ 您今日此班已報班',true); return; }
 
     setSS('staff-sync','loading','上傳中…');
-    await dbAdd('shifts', {name, empid: empid||'待填入', date, client, shift, note, status:'pending'});
+    await dbAdd('shifts', {name, empid: empid||'待填入', date, shift, note, status:'pending'});
     setSS('staff-sync','done','上傳成功');
     document.getElementById('form-card').style.display='none';
     document.getElementById('staff-success').style.display='block';
     document.getElementById('success-detail').innerHTML=
-      `<strong>${name}</strong>${empid ? `（${empid}）` : ''}<br>${fmtDate(date)} ${client} ${shift}`;
+      `<strong>${name}</strong>${empid ? `（${empid}）` : ''}<br>${fmtDate(date)} ${shift}`;
   } catch(e) { setSS('staff-sync','err','上傳失敗'); toast('❌ 上傳失敗',true); }
 }
 function resetStaff() {
@@ -1038,9 +648,6 @@ function resetStaff() {
   document.getElementById('staff-success').style.display='none';
   ['s-name','s-empid','s-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('s-shift').value='';
-  const sc=document.getElementById('s-client');
-  sc.innerHTML='<option value="">請先輸入工號</option>';
-  sc.disabled=true;
   document.getElementById('s-date').value=todayStr();
   document.getElementById('identity-confirm').style.display='none';
   document.getElementById('shift-fields').style.display='none';
@@ -1053,7 +660,19 @@ async function loadRecords() {
   catch(e) { setSS('admin-sync','err','讀取失敗'); toast('❌ 讀取失敗',true); }
 }
 function renderAdmin() {
-  const dates=[...new Set(allRecords.map(r=>r.date))].sort().reverse();
+  const clientFilter = document.getElementById('admin-client-filter');
+  // 更新客戶篩選選單
+  if (clientFilter) {
+    const cur = clientFilter.value;
+    const clientNames = [...new Set(allRecords.map(r=>r.client||'').filter(c=>c))].sort();
+    clientFilter.innerHTML = '<option value="">全部客戶</option>' +
+      clientNames.map(c=>`<option value="${c}">${c}</option>`).join('');
+    clientFilter.value = cur;
+  }
+  const filterClient = clientFilter ? clientFilter.value : '';
+  const filtered = filterClient ? allRecords.filter(r=>r.client===filterClient) : allRecords;
+
+  const dates=[...new Set(filtered.map(r=>r.date))].sort().reverse();
   document.getElementById('s-total').textContent=allRecords.length;
   document.getElementById('s-pending').textContent=allRecords.filter(r=>r.status==='pending').length;
   document.getElementById('s-approved').textContent=allRecords.filter(r=>r.status==='approved').length;
@@ -1061,8 +680,8 @@ function renderAdmin() {
   const tabs=document.getElementById('dtabs');
   if (!dates.length) { tabs.innerHTML=''; renderAdminTable([]); return; }
   if (!activeDateTab||!dates.includes(activeDateTab)) activeDateTab=dates[0];
-  tabs.innerHTML=dates.map(d=>`<button class="dtab ${d===activeDateTab?'active':''}" onclick="selectDate('${d}')">${fmtDate(d)}</button>`).join('');
-  renderAdminTable(allRecords.filter(r=>r.date===activeDateTab));
+  tabs.innerHTML=dates.map(d=>`<button class="dtab ${d===activeDateTab?'active':''}" onclick="selectDate('${d}')">${fmtDateShort(d)}</button>`).join('');
+  renderAdminTable(filtered.filter(r=>r.date===activeDateTab));
 }
 function selectDate(d) { activeDateTab=d; renderAdmin(); }
 function renderAdminTable(list) {
@@ -1073,7 +692,6 @@ function renderAdminTable(list) {
     const sb=r.status==='approved'?'<span class="badge-approved">✓ 通過</span>':r.status==='rejected'?'<span class="badge-rejected">✗ 拒絕</span>':'<span class="badge-pending">待審核</span>';
     // 所有狀態都顯示完整操作按鈕，可隨時修改
     const acts=`
-      <button class="btn-outline btn-sm" style="padding:3px 8px;font-size:11px;margin-bottom:3px" onclick="editRecordEmpid('${r._id}','${r.empid}')">✏ 工號</button>
       ${r.status!=='approved'?`<button class="btn-approve" onclick="approveRecord('${r._id}','${r.empid}','${r.name}','${r.date}','${r.shift}')">✓ 通過</button>`:''}
       ${r.status!=='rejected'?`<button class="btn-reject" onclick="rejectRecord('${r._id}','${r.name}')">✗ 拒絕</button>`:''}
       ${r.status!=='pending'?`<button class="btn-outline btn-sm" style="padding:3px 8px;font-size:11px" onclick="resetRecord('${r._id}')">↩ 待審</button>`:''}
@@ -1084,16 +702,6 @@ function renderAdminTable(list) {
       <td style="color:var(--muted)">${r.note||'—'}</td><td>${sb}</td><td style="white-space:nowrap">${acts}</td></tr>`;
   }).join('');
 }
-function editRecordEmpid(id, currentEmpid) {
-  const newEmpid = prompt('修改工號：', currentEmpid === '待填入' ? '' : currentEmpid);
-  if (newEmpid === null) return;
-  dbUpdate('shifts', id, { empid: newEmpid.trim().toUpperCase() || '待填入' }).then(async () => {
-    allRecords = await dbGetAll('shifts');
-    renderAdminTable(allRecords);
-    toast('✓ 工號已更新');
-  });
-}
-
 async function approveRecord(id,empid,name,date,shift) {
   try {
     await dbUpdate('shifts',id,{status:'approved'});
@@ -1163,23 +771,75 @@ async function loadEmpUI() {
   renderEmpTable();
 }
 function renderEmpTable() {
-  const tbody=document.getElementById('emp-tbody');
+  const tbody  = document.getElementById('emp-tbody');
+  const filter = document.getElementById('emp-client-filter');
+  if (filter && allClients && allClients.length) {
+    const cur = filter.value;
+    filter.innerHTML = '<option value="">全部客戶</option>' +
+      allClients.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+    filter.value = cur;
+  }
+  const filterClient = filter ? filter.value : '';
   if (!allEmployees.length) { tbody.innerHTML='<tr><td colspan="5" class="empty">尚無員工資料，請新增</td></tr>'; return; }
-  const sorted=[...allEmployees].sort((a,b)=>a.empid.localeCompare(b.empid));
+  let sorted=[...allEmployees].sort((a,b)=>(a.empid||'').localeCompare(b.empid||''));
+  if (filterClient) sorted=sorted.filter(e=>(e.clients||'').split(',').map(s=>s.trim()).includes(filterClient));
+  if (!sorted.length) { tbody.innerHTML='<tr><td colspan="5" class="empty">此客戶尚無員工</td></tr>'; return; }
   tbody.innerHTML=sorted.map(e=>`<tr>
-    <td><strong style="font-family:monospace">${e.empid}</strong></td>
+    <td><strong style="font-family:monospace">${e.empid||'—'}</strong></td>
     <td>${e.name}</td>
-    <td style="font-size:12px;color:var(--muted)">
-      ${e.clients ? e.clients : '<span style="color:#f87171">未設定</span>'}
-      <button class="btn-outline" style="padding:2px 8px;font-size:11px;margin-left:6px"
-        onclick="editEmpClients('${e._id}','${e.name}','${e.clients||''}')">設定</button>
+    <td style="font-size:12px;color:var(--muted)">${e.clients||'<span style=color:#f87171>未設定</span>'}
+      <button class="btn-outline" style="padding:2px 8px;font-size:11px;margin-left:6px" onclick="editEmpClients('${e._id}','${e.name}','${e.clients||''}')">設定</button>
     </td>
     <td>${e.lineId?'<span class="badge-approved">已設定</span>':'<span class="badge-pending">未設定</span>'}</td>
-    <td>
-      <button class="btn btn-outline btn-sm" onclick="editEmpLine('${e._id}','${e.name}','${e.empid}')">LINE ID</button>
+    <td style="display:flex;gap:4px;flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" onclick="editEmpLine('${e._id}','${e.name}','${e.empid||''}')">LINE ID</button>
       <button class="btn-del" onclick="deleteEmp('${e._id}')">刪除</button>
     </td>
   </tr>`).join('');
+}
+
+function editEmpClients(id, name, current) {
+  if (!allClients || !allClients.length) { toast('⚠ 請先在客戶管理新增客戶', true); return; }
+  const currentArr = current ? current.split(',').map(s=>s.trim()).filter(s=>s) : [];
+  const opts = allClients.map(c =>
+    `<label style="display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;font-size:15px;border-bottom:1px solid rgba(0,0,0,0.06);">
+      <input type="checkbox" value="${c.name}" ${currentArr.includes(c.name)?'checked':''} style="width:18px;height:18px;cursor:pointer;accent-color:var(--gold);">
+      ${c.name}
+    </label>`
+  ).join('');
+  const div = document.createElement('div');
+  div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  div.innerHTML=`
+    <div style="background:var(--surface);border-radius:16px;padding:28px;width:90%;max-width:360px;box-shadow:0 8px 40px rgba(0,0,0,0.3);">
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px;">派工客戶設定</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">「${name}」可打卡的地點</div>
+      <div style="max-height:260px;overflow-y:auto;">${opts}</div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:12px;border:2px solid var(--border);border-radius:10px;background:none;cursor:pointer;font-size:14px;font-family:inherit;">取消</button>
+        <button id="save-clients-btn" style="flex:2;padding:12px;background:var(--gold);border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;color:#000;">儲存</button>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+  div.querySelector('#save-clients-btn').onclick = async () => {
+    const checked=[...div.querySelectorAll('input[type=checkbox]:checked')].map(i=>i.value);
+    const clientStr = checked.join(',');
+    div.remove();
+
+    // 1. 更新 Firestore
+    await dbUpdate('employees', id, { clients: clientStr });
+    allEmployees = await dbGetAll('employees');
+    renderEmpTable();
+
+    // 2. 同步更新 Google Sheets F欄
+    const emp = allEmployees.find(e => e._id === id);
+    const empName = emp ? emp.name : name;
+    try {
+      await fetch(`${GAS_URL}?action=update_emp_clients&name=${encodeURIComponent(empName)}&clients=${encodeURIComponent(clientStr)}`);
+      toast('✓ 派工客戶已更新（Firestore + Sheets）');
+    } catch(e) {
+      toast('✓ Firestore 已更新，Sheets 同步失敗請手動更新', true);
+    }
+  };
 }
 async function saveEmployee() {
   const empid=document.getElementById('e-empid').value.trim().toUpperCase();
@@ -1195,25 +855,6 @@ async function saveEmployee() {
     ['e-empid','e-name','e-lineid'].forEach(id=>document.getElementById(id).value='');
   } catch(e) { setSS('emp-sync','err','失敗'); toast('❌ 儲存失敗',true); }
 }
-function editEmpClients(id, name, current) {
-  // 顯示可選的客戶清單
-  const clientOpts = allClients.length
-    ? allClients.map(c => c.name).join('、')
-    : '（尚無客戶）';
-  const input = prompt(
-    `設定「${name}」的派工地點
-可用客戶：${clientOpts}
-多個地點用逗號分隔（例如：雙葉,日通-8倉）：`,
-    current || ''
-  );
-  if (input === null) return;
-  dbUpdate('employees', id, { clients: input.trim() }).then(async () => {
-    allEmployees = await dbGetAll('employees');
-    renderEmpTable();
-    toast('✓ 派工地點已更新');
-  });
-}
-
 function editEmpLine(id,name,empid) {
   const emp=allEmployees.find(e=>e._id===id);
   const newId=prompt(`編輯 ${name}（${empid}）的 LINE User ID：`,emp.lineId||'');
@@ -1250,37 +891,33 @@ document.querySelectorAll('.modal-bd').forEach(m=>m.addEventListener('click',fun
 function setDefaultExportDate() { const el=document.getElementById('ex-date'); if(!el.value) el.value=activeDateTab||todayStr(); }
 function getExportList() {
   const date=document.getElementById('ex-date').value;
-  const client=document.getElementById('ex-client').value;
+  const client=document.getElementById('ex-client')?document.getElementById('ex-client').value:'';
   const shift=document.getElementById('ex-shift').value;
   return allRecords.filter(r=>r.date===date&&(client?r.client===client:true)&&r.shift===shift&&r.status!=='rejected').sort((a,b)=>a.empid.localeCompare(b.empid));
 }
 function previewExport() {
   if (!unlocked.export) return;
-  const list=getExportList();
-  const date=document.getElementById('ex-date').value;
-  const client=document.getElementById('ex-client').value||'（未選客戶）';
-  const shift=document.getElementById('ex-shift').value;
+  const list=getExportList(), date=document.getElementById('ex-date').value, shift=document.getElementById('ex-shift').value;
   const card=document.getElementById('preview-card'), wrap=document.getElementById('preview-wrap');
   card.style.display='block';
-  if (!list.length) { wrap.innerHTML='<div class="empty">此條件尚無資料</div>'; return; }
-  const title=`${fmtDate(date)} ${client} ${shift} 人員`;
+  if (!list.length) { wrap.innerHTML='<div class="empty">此日期／班別尚無資料</div>'; return; }
+  const clientName=document.getElementById('ex-client')?document.getElementById('ex-client').value||'全部':'全部';
+  const title=`${fmtDate(date)} ${clientName} ${shift} 人員`;
   let html=`<table class="preview-tbl"><tr class="ph"><td colspan="6">${title}</td></tr><tr class="pc"><td>編號</td><td>工號</td><td>姓名</td><td>下午</td><td>晚間</td><td>備註</td></tr>`;
   list.forEach((r,i)=>{ html+=`<tr class="pd"><td>${i+1}</td><td>${r.empid}</td><td>${r.name}</td><td></td><td></td><td>${r.note||''}</td></tr>`; });
   wrap.innerHTML=html+'</table>';
 }
 function doExport() {
-  const list=getExportList();
-  const date=document.getElementById('ex-date').value;
-  const client=document.getElementById('ex-client').value||'未選客戶';
-  const shift=document.getElementById('ex-shift').value;
+  const list=getExportList(), date=document.getElementById('ex-date').value, shift=document.getElementById('ex-shift').value;
   if (!list.length) { toast('⚠ 無資料可匯出',true); return; }
-  const wb=XLSX.utils.book_new(), title=`${fmtDate(date)} ${client} ${shift} 人員`;
+  const clientName2=document.getElementById('ex-client')?document.getElementById('ex-client').value||'全部':'全部';
+  const wb=XLSX.utils.book_new(), title=`${fmtDate(date)} ${clientName2} ${shift} 人員`;
   const aoa=[[title,'','','','',''],['編號','工號','姓名','下午','晚間','備註'],...list.map((r,i)=>[i+1,r.empid,r.name,'','',r.note||''])];
   const ws=XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols']=[{wch:6},{wch:10},{wch:12},{wch:8},{wch:8},{wch:20}];
   ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}}];
   XLSX.utils.book_append_sheet(wb,ws,shift);
-  XLSX.writeFile(wb,`${client}${shift}人員_${date.replace(/-/g,'')}.xlsx`);
+  XLSX.writeFile(wb,`${clientName2}${shift}人員_${date.replace(/-/g,'')}.xlsx`);
   toast('✓ Excel 已下載！');
 }
 
