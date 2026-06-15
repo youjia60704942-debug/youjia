@@ -232,21 +232,28 @@ tr:hover td{background:rgba(201,168,76,.04);}
 
       <div id="shift-fields" style="display:none">
         <div class="form-row">
-          <div class="form-group"><label>報班日期</label><input type="date" id="s-date"></div>
           <div class="form-group"><label>派工客戶</label>
             <select id="s-client" disabled style="background:#f8f8f8;color:var(--muted);">
               <option value="">請先輸入工號</option>
             </select>
           </div>
-        </div>
-        <div class="form-row">
           <div class="form-group"><label>班別</label>
             <select id="s-shift"><option value="">請選擇</option><option value="日班">日班</option><option value="晚班">晚班</option></select>
           </div>
         </div>
+        <div class="form-group">
+          <label>報班日期（可多選）</label>
+          <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="addDatePicker()" style="font-size:13px;">＋ 新增日期</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="addNextWeek()" style="font-size:13px;">＋ 整週（7天）</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="clearDates()" style="font-size:13px;color:var(--danger);">清除</button>
+          </div>
+          <div id="date-list" style="display:flex;flex-wrap:wrap;gap:8px;min-height:40px;padding:10px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);"></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px;">已選 <span id="date-count">0</span> 天</div>
+        </div>
         <div class="form-group" style="margin-bottom:18px"><label>備註（選填）</label><input type="text" id="s-note" placeholder="例：代班、加班…"></div>
         <div id="staff-sync" class="sync-st" style="display:none;margin-bottom:10px;"></div>
-        <button class="btn btn-primary" onclick="staffSubmit()" style="width:100%;justify-content:center;padding:13px;font-size:15px;">確認送出報班</button>
+        <button class="btn btn-primary" onclick="staffSubmit()" style="width:100%;justify-content:center;padding:13px;font-size:15px;" id="submit-btn">確認送出報班</button>
       </div>
       <button class="btn btn-outline" onclick="goBack()" style="width:100%;justify-content:center;margin-top:10px;">← 返回主頁</button>
     </div>
@@ -1021,36 +1028,111 @@ function modalAcFill() {
 }
 
 // Staff
+// ── 多日期選擇器 ──────────────────────────────
+let selectedDates = [];
+
+function initDatePicker() {
+  selectedDates = [todayStr()];
+  renderDateList();
+}
+
+function addDatePicker() {
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.style.cssText = 'position:absolute;opacity:0;pointer-events:none;';
+  input.value = selectedDates.length ? selectedDates[selectedDates.length-1] : todayStr();
+  document.body.appendChild(input);
+  input.addEventListener('change', () => {
+    if (input.value && !selectedDates.includes(input.value)) {
+      selectedDates.push(input.value);
+      selectedDates.sort();
+      renderDateList();
+    }
+    input.remove();
+  });
+  input.showPicker ? input.showPicker() : input.click();
+}
+
+function addNextWeek() {
+  const base = selectedDates.length ? new Date(selectedDates[selectedDates.length-1]+'T00:00:00') : new Date();
+  for (let i=1; i<=7; i++) {
+    const d = new Date(base); d.setDate(base.getDate()+i);
+    const ds = d.toISOString().slice(0,10);
+    if (!selectedDates.includes(ds)) selectedDates.push(ds);
+  }
+  selectedDates.sort();
+  renderDateList();
+}
+
+function removeDate(ds) {
+  selectedDates = selectedDates.filter(d=>d!==ds);
+  renderDateList();
+}
+
+function clearDates() { selectedDates=[]; renderDateList(); }
+
+function renderDateList() {
+  const el = document.getElementById('date-list');
+  const cnt = document.getElementById('date-count');
+  if (!selectedDates.length) {
+    el.innerHTML='<span style="color:var(--muted);font-size:13px;">尚未選擇日期</span>';
+    cnt.textContent='0'; return;
+  }
+  const w=['日','一','二','三','四','五','六'];
+  el.innerHTML = selectedDates.map(ds=>{
+    const d=new Date(ds+'T00:00:00');
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--gold-lt);color:var(--navy);padding:5px 10px;border-radius:20px;font-size:13px;font-weight:600;">
+      ${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}（${w[d.getDay()]}）
+      <button onclick="removeDate('${ds}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--navy);padding:0;line-height:1;">✕</button>
+    </span>`;
+  }).join('');
+  cnt.textContent = selectedDates.length;
+}
+
 async function staffSubmit() {
-  const name=document.getElementById('s-name').value.trim();
-  const empid=document.getElementById('s-empid').value.trim().toUpperCase();
-  const date=document.getElementById('s-date').value;
-  const client=document.getElementById('s-client').value;
-  const shift=document.getElementById('s-shift').value;
-  const note=document.getElementById('s-note').value.trim();
+  const name  = document.getElementById('s-name').value.trim();
+  const empid = document.getElementById('s-empid').value.trim().toUpperCase();
+  const client= document.getElementById('s-client').value;
+  const shift = document.getElementById('s-shift').value;
+  const note  = document.getElementById('s-note').value.trim();
 
-  // 有填工號但沒通過系統查詢 → 拒絕
   if (empid && !empidVerified) { toast('⚠ 工號未經查詢驗證，請點「查詢」按鈕確認工號', true); return; }
-  if (!name)  { toast('⚠ 請輸入姓名或工號', true); return; }
-  if (!date||!client||!shift) { toast('⚠ 請填寫日期、客戶及班別', true); return; }
+  if (!name)   { toast('⚠ 請輸入姓名或工號', true); return; }
+  if (!client||!shift) { toast('⚠ 請填寫客戶及班別', true); return; }
+  if (!selectedDates.length) { toast('⚠ 請選擇至少一個報班日期', true); return; }
 
-  setSS('staff-sync','loading','確認中…');
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  setSS('staff-sync','loading',`送出中（0/${selectedDates.length}）…`);
+
   try {
     const fresh = await dbGetAll('shifts');
-    // 重複報班判斷：有工號用工號比對，沒工號用姓名比對
-    const dup = empid
-      ? fresh.find(r=>r.empid===empid&&r.date===date&&r.shift===shift&&r.client===client)
-      : fresh.find(r=>r.name===name&&r.date===date&&r.shift===shift&&r.client===client);
-    if (dup) { setSS('staff-sync','err','重複報班'); toast('⚠ 您今日此班已報班',true); return; }
+    const success=[], skipped=[];
 
-    setSS('staff-sync','loading','上傳中…');
-    await dbAdd('shifts', {name, empid: empid||'待填入', date, client, shift, note, status:'pending'});
-    setSS('staff-sync','done','上傳成功');
+    for (const date of selectedDates) {
+      const dup = empid
+        ? fresh.find(r=>r.empid===empid&&r.date===date&&r.shift===shift&&r.client===client)
+        : fresh.find(r=>r.name===name&&r.date===date&&r.shift===shift&&r.client===client);
+      if (dup) { skipped.push(date); continue; }
+      await dbAdd('shifts',{name,empid:empid||'待填入',date,client,shift,note,status:'pending'});
+      success.push(date);
+    }
+
+    btn.disabled = false;
+    setSS('staff-sync','done',`成功 ${success.length} 筆`);
     document.getElementById('form-card').style.display='none';
     document.getElementById('staff-success').style.display='block';
+
+    const w=['日','一','二','三','四','五','六'];
+    const dateStr = success.map(ds=>{
+      const d=new Date(ds+'T00:00:00');
+      return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}（${w[d.getDay()]}）`;
+    }).join('、');
     document.getElementById('success-detail').innerHTML=
-      `<strong>${name}</strong>${empid ? `（${empid}）` : ''}<br>${fmtDate(date)} ${client} ${shift}`;
-  } catch(e) { setSS('staff-sync','err','上傳失敗'); toast('❌ 上傳失敗',true); }
+      `<strong>${name}</strong>${empid?`（${empid}）`:''}<br>${client} ${shift}<br>` +
+      `✅ 已報班：${dateStr}` +
+      (skipped.length ? `<br><span style="color:#f59e0b">⚠ 已跳過重複：${skipped.length} 天</span>` : '');
+  } catch(e) { btn.disabled=false; setSS('staff-sync','err','上傳失敗'); toast('❌ 上傳失敗',true); }
 }
 function resetStaff() {
   document.getElementById('form-card').style.display='block';
@@ -1060,7 +1142,7 @@ function resetStaff() {
   const sc=document.getElementById('s-client');
   sc.innerHTML='<option value="">請先輸入工號</option>';
   sc.disabled=true;
-  document.getElementById('s-date').value=todayStr();
+  selectedDates=[todayStr()]; renderDateList();
   document.getElementById('identity-confirm').style.display='none';
   document.getElementById('shift-fields').style.display='none';
 }
