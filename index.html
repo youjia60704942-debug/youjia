@@ -684,7 +684,19 @@ function showPage(id, btn) {
     document.getElementById('pg-admin').classList.add('active');
     toast('⚠ 請先登入管理師後台', true); return;
   }
-  if (id==='pg-export') { setDefaultExportDate(); refreshClientSelects(); previewExport(); }
+  if (id==='pg-export') {
+    setDefaultExportDate();
+    if (!allClients.length) {
+      fetch(GAS_URL + '?action=list_clients').then(r=>r.json()).then(d=>{
+        allClients = d.clients || [];
+        refreshClientSelects();
+        previewExport();
+      });
+    } else {
+      refreshClientSelects();
+      previewExport();
+    }
+  }
   if (id==='pg-emp') loadEmpUI();
   if (id==='pg-resume') loadResumeList();
   if (id==='pg-client') loadClientUI();
