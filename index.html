@@ -639,7 +639,6 @@ function enterRole(role) {
       <button onclick="showPage('pg-emp',this)">員工資料庫</button>
       <button onclick="showPage('pg-attend',this)">📋 今日出勤</button>
       <button onclick="showPage('pg-client',this)">🏭 客戶管理</button>
-      <button onclick="showPage('pg-resume',this)">📄 員工履歷</button>
       <button onclick="showPage('pg-export',this)">匯出名單</button>
       <button onclick="showPage('pg-pw',this)">🔑 修改密碼</button>
       <button onclick="adminLogout()" style="color:rgba(255,255,255,.35)">登出</button>`;
@@ -1295,6 +1294,7 @@ function renderEmpTable() {
     </td>
     <td>${e.lineId?'<span class="badge-approved">已設定</span>':'<span class="badge-pending">未設定</span>'}</td>
     <td style="display:flex;gap:4px;flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" onclick="viewEmpResume('${e.name}')">履歷</button>
       <button class="btn btn-outline btn-sm" onclick="editEmpLine('${e._id}','${e.name}','${e.empid||''}')">LINE ID</button>
       <button class="btn-del" onclick="deleteEmp('${e._id}')">刪除</button>
     </td>
@@ -1426,6 +1426,16 @@ function doExport() {
 
 // ── 員工履歷 ──────────────────────────────────────
 let allResumes = [];
+async function viewEmpResume(name) {
+  // 先確保 allResumes 有資料
+  if (!allResumes || !allResumes.length) {
+    allResumes = await dbGetAll('employees');
+  }
+  const r = allResumes.find(e => e.name === name);
+  if (!r) { toast('⚠ 找不到此員工的履歷資料', true); return; }
+  showResumeDetail(r._id);
+}
+
 async function loadResumeList() {
   setSS('resume-sync','loading','讀取履歷資料…');
   try {
