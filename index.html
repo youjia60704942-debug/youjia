@@ -1192,9 +1192,15 @@ function renderAdminTable(list) {
   if (!list.length) { tbody.innerHTML='<tr><td colspan="8" class="empty">此日期尚無報班</td></tr>'; return; }
   const sorted=[...list].sort((a,b)=>a.shift!==b.shift?(a.shift==='日班'?-1:1):a.empid.localeCompare(b.empid));
   tbody.innerHTML=sorted.map((r,i)=>{
-    const sb=r.status==='approved'?'<span class="badge-approved">✓ 通過</span>':r.status==='rejected'?'<span class="badge-rejected">✗ 拒絕</span>':'<span class="badge-pending">待審核</span>';
+    // 查是否為黑名單
+  const empInfo = allEmployees.find(e=>e.name===r.name);
+  const isBlacklisted = empInfo && empInfo.blacklist;
+  const blReason = empInfo && empInfo.blacklistReason ? empInfo.blacklistReason : '';
+  const blBadge = isBlacklisted ? `<span style="background:#fee2e2;color:#b91c1c;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;margin-left:4px;" title="${blReason}">⛔ 黑名單${blReason?'：'+blReason:''}</span>` : '';
+  const sb=r.status==='approved'?'<span class="badge-approved">✓ 通過</span>':r.status==='rejected'?'<span class="badge-rejected">✗ 拒絕</span>':'<span class="badge-pending">待審核</span>';
     // 所有狀態都顯示完整操作按鈕，可隨時修改
-    const acts=`
+    const rowStyle = isBlacklisted ? 'background:rgba(239,68,68,0.07);' : '';
+  const acts=`
       <button class="btn-outline btn-sm" style="padding:3px 8px;font-size:11px;margin-bottom:3px" onclick="editRecordEmpid('${r._id}','${r.empid}')">✏ 工號</button>
       ${r.status!=='approved'?`<button class="btn-approve" onclick="approveRecord('${r._id}','${r.empid}','${r.name}','${r.date}','${r.shift}')">✓ 通過</button>`:''}
       ${r.status!=='rejected'?`<button class="btn-reject" onclick="rejectRecord('${r._id}','${r.name}')">✗ 拒絕</button>`:''}
@@ -1298,9 +1304,12 @@ function renderEmpTable() {
   let sorted=[...allEmployees].sort((a,b)=>(a.empid||'').localeCompare(b.empid||''));
   if (filterClient) sorted=sorted.filter(e=>(e.clients||'').split(',').map(s=>s.trim()).includes(filterClient));
   if (!sorted.length) { tbody.innerHTML='<tr><td colspan="5" class="empty">此客戶尚無員工</td></tr>'; return; }
-  tbody.innerHTML=sorted.map(e=>`<tr>
+  tbody.innerHTML=sorted.map(e=>`<tr style="${e.blacklist?'background:rgba(239,68,68,0.06);':''}">
     <td><strong style="font-family:monospace">${e.empid||'—'}</strong></td>
-    <td>${e.name}</td>
+    <td>
+      ${e.name}
+      ${e.blacklist?'<span style="background:#fee2e2;color:#b91c1c;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;margin-left:6px;">⛔ 黑名單</span>':''}
+    </td>
     <td style="font-size:12px;color:var(--muted)">${e.clients||'<span style=color:#f87171>未設定</span>'}
       <button class="btn-outline" style="padding:2px 8px;font-size:11px;margin-left:6px" onclick="editEmpClients('${e._id}','${e.name}','${e.clients||''}')">設定</button>
     </td>
@@ -1308,6 +1317,7 @@ function renderEmpTable() {
     <td style="display:flex;gap:4px;flex-wrap:wrap;">
       <button class="btn btn-outline btn-sm" onclick="viewEmpResume('${e.name}')">履歷</button>
       <button class="btn btn-outline btn-sm" onclick="editEmpLine('${e._id}','${e.name}','${e.empid||''}')">LINE ID</button>
+      <button class="btn-outline btn-sm" style="padding:3px 8px;font-size:11px;" onclick="editBlacklist('${e._id}','${e.name}')">⛔</button>
       <button class="btn-del" onclick="deleteEmp('${e._id}')">刪除</button>
     </td>
   </tr>`).join('');
@@ -1365,6 +1375,43 @@ function editEmpClients(id, name, current) {
     } catch(e) {
       toast('✓ Firestore 已更新，Sheets 同步失敗', true);
     }
+  };
+}
+
+function editBlacklist(id, name) {
+  const emp = allEmployees.find(e=>e._id===id);
+  const isBlacklisted = !!(emp && emp.blacklist);
+  const currentReason = (emp && emp.blacklistReason) || '';
+  const div = document.createElement('div');
+  div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  div.innerHTML=`
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:400px;box-shadow:0 16px 48px rgba(0,0,0,0.25);overflow:hidden;">
+      <div style="padding:22px 24px 16px;border-bottom:2px solid #fee2e2;">
+        <div style="font-size:17px;font-weight:800;color:#b91c1c;">⛔ 黑名單設定</div>
+        <div style="font-size:13px;color:#888;margin-top:4px;">員工：${name}</div>
+      </div>
+      <div style="padding:20px 24px;">
+        <label style="display:flex;align-items:center;gap:10px;margin-bottom:16px;cursor:pointer;font-size:15px;font-weight:600;">
+          <input type="checkbox" id="bl-check" ${isBlacklisted?'checked':''} style="width:20px;height:20px;accent-color:#ef4444;">
+          列為黑名單
+        </label>
+        <div style="font-size:13px;color:#666;margin-bottom:8px;">原因（選填）</div>
+        <textarea id="bl-reason" rows="3" placeholder="例如：無故曠職、態度不佳…" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;">${currentReason||''}</textarea>
+      </div>
+      <div style="display:flex;gap:10px;padding:16px 24px;border-top:1px solid #eee;">
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:13px;border:2px solid #ddd;border-radius:12px;background:none;cursor:pointer;font-size:14px;font-family:inherit;">取消</button>
+        <button id="bl-save-btn" style="flex:2;padding:13px;background:#ef4444;border:none;border-radius:12px;cursor:pointer;font-size:15px;font-weight:700;font-family:inherit;color:#fff;">儲存</button>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+  div.querySelector('#bl-save-btn').onclick = async () => {
+    const bl     = div.querySelector('#bl-check').checked;
+    const reason = div.querySelector('#bl-reason').value.trim();
+    div.remove();
+    await dbUpdate('employees', id, { blacklist: bl, blacklistReason: reason });
+    allEmployees = await dbGetAll('employees');
+    renderEmpTable();
+    toast(bl ? '⛔ 已列入黑名單' : '✓ 已移除黑名單');
   };
 }
 
