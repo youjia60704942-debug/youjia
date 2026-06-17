@@ -1206,7 +1206,7 @@ function renderAdminTable(list) {
       ${r.status!=='rejected'?`<button class="btn-reject" onclick="rejectRecord('${r._id}','${r.name}')">✗ 拒絕</button>`:''}
       ${r.status!=='pending'?`<button class="btn-outline btn-sm" style="padding:3px 8px;font-size:11px" onclick="resetRecord('${r._id}')">↩ 待審</button>`:''}
       <button class="btn-del" onclick="deleteRecord('${r._id}')">刪除</button>`;
-    return `<tr><td>${i+1}</td><td style="font-family:monospace;font-weight:600">${r.empid}</td><td><strong>${r.name}</strong></td>
+    return `<tr style="${rowStyle}"><td>${i+1}</td><td style="font-family:monospace;font-weight:600">${r.empid}</td><td><strong>${r.name}</strong>${blBadge}</td>
       <td>${r.shift==='日班'?'<span class="badge-day">日班</span>':'<span class="badge-night">晚班</span>'}</td>
       <td style="color:var(--muted);font-size:11px">${fmtDate(r.date)}</td>
       <td style="color:var(--muted)">${r.note||'—'}</td><td>${sb}</td><td style="white-space:nowrap">${acts}</td></tr>`;
@@ -1334,6 +1334,10 @@ async function saveEmployee() {
     allEmployees=await dbGetAll('employees');
     renderEmpTable(); setSS('emp-sync','done','已儲存'); toast('✓ 員工資料已新增');
     ['e-empid','e-name','e-lineid'].forEach(id=>document.getElementById(id).value='');
+    // 同步到 Google Sheets A欄
+    try {
+      await fetch(`${GAS_URL}?action=update_emp_empid&name=${encodeURIComponent(name)}&empid=${encodeURIComponent(empid)}`);
+    } catch(e) { console.log('Sheets 工號同步失敗', e); }
   } catch(e) { setSS('emp-sync','err','失敗'); toast('❌ 儲存失敗',true); }
 }
 function editEmpClients(id, name, current) {
@@ -1596,6 +1600,16 @@ async function editResumeField(docId, field, currentVal) {
     // 更新本地資料
     const idx = allResumes.findIndex(r=>r._id===docId);
     if (idx !== -1) allResumes[idx][field] = trimmed;
+    // 如果是工號，同步到 Sheets A欄
+    if (field === 'empid') {
+      const emp = allResumes[idx];
+      if (emp && emp.name) {
+        try {
+          await fetch(`${GAS_URL}?action=update_emp_empid&name=${encodeURIComponent(emp.name)}&empid=${encodeURIComponent(trimmed)}`);
+          toast('✓ 工號已更新（Firestore + Sheets）');
+        } catch(e) { toast('✓ Firestore 已更新，Sheets 同步失敗', true); }
+      }
+    }
     // 更新畫面上的顯示
     const el = document.getElementById(`rv-${field}`);
     if (el) el.textContent = trimmed;
