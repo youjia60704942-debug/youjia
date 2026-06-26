@@ -962,8 +962,7 @@ function renderClientTable() {
     <td><a href="${base}?client=${encodeURIComponent(c.name||'')}" target="_blank"
        style="color:#4f8ef7;font-size:12px;text-decoration:none;">🔗 開啟</a></td>
     <td style="display:flex;gap:4px;flex-wrap:wrap;">
-      <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
-        onclick="editClientRates(this)"        data-name="${c.name}" data-dr="${c.dayRate||''}" data-nr="${c.nightRate||''}"        data-d134="${c.dayOt134Base||''}" data-d167="${c.dayOt167Base||''}"        data-n134="${c.nightOt134Base||''}" data-n167="${c.nightOt167Base||''}"        data-ds="${c.dayStart||'08:00'}" data-de="${c.dayEnd||'16:30'}"        data-ns="${c.nightStart||'20:30'}" data-ne="${c.nightEnd||'05:00'}">💰薪資</button>
+      <button class="btn-outline" style="padding:3px 8px;font-size:11px;" onclick="openRatesModal(${i})">💰薪資</button>
       <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
         onclick="editClientCoord('${c.name}','${c.lat||''}','${c.lng||''}','${c.radius||100}')">座標</button>
       <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
@@ -1009,18 +1008,13 @@ async function saveClient() {
   } catch(e) { setSS('client-sync', 'err', '失敗'); toast('❌ 儲存失敗：' + e.message, true); }
 }
 
-async function editClientRates(btn) {
-  const name = btn.dataset.name;
-  const dr   = btn.dataset.dr;
-  const nr   = btn.dataset.nr;
-  const d134 = btn.dataset.d134;
-  const d167 = btn.dataset.d167;
-  const n134 = btn.dataset.n134;
-  const n167 = btn.dataset.n167;
-  const ds   = btn.dataset.ds;
-  const de   = btn.dataset.de;
-  const ns   = btn.dataset.ns;
-  const ne   = btn.dataset.ne;
+function openRatesModal(i) {
+  const c = allClients[i];
+  if (!c) return;
+  editClientRates(c.name, c.dayRate||'', c.nightRate||'', c.dayOt134Base||'', c.dayOt167Base||'', c.nightOt134Base||'', c.nightOt167Base||'', c.dayStart||'08:00', c.dayEnd||'16:30', c.nightStart||'20:30', c.nightEnd||'05:00');
+}
+
+async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, de, ns, ne) {
   const div = document.createElement('div');
   div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
   div.innerHTML=`
