@@ -390,8 +390,12 @@ tr:hover td{background:rgba(201,168,76,.04);}
           <div class="form-group"><label>夜班 ×1.67 基準</label><input type="number" id="c-nightOt167" placeholder="例：230" inputmode="numeric"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>日班開始時間</label><input type="text" id="c-dayStart" placeholder="08:00" value="08:00"></div>
-          <div class="form-group"><label>夜班開始時間</label><input type="text" id="c-nightStart" placeholder="20:30" value="20:30"></div>
+          <div class="form-group"><label>日班開始</label><input type="text" id="c-dayStart" placeholder="08:00" value="08:00"></div>
+          <div class="form-group"><label>日班結束</label><input type="text" id="c-dayEnd" placeholder="16:30" value="16:30"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>夜班開始</label><input type="text" id="c-nightStart" placeholder="20:30" value="20:30"></div>
+          <div class="form-group"><label>夜班結束</label><input type="text" id="c-nightEnd" placeholder="05:00" value="05:00"></div>
         </div>
         <div class="info-box" style="margin-bottom:12px">
           💡 座標取得方式：Google Maps 找到公司位置 → 右鍵 → 點第一行數字即可複製<br>
@@ -406,7 +410,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
         </div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>#</th><th>客戶名稱</th><th>座標</th><th>範圍</th><th>主管密碼</th><th>查看連結</th><th>操作</th></tr></thead>
+            <thead><tr><th>#</th><th>客戶名稱</th><th>時薪</th><th>座標</th><th>範圍</th><th>查看連結</th><th>操作</th></tr></thead>
             <tbody id="client-tbody"></tbody>
           </table>
         </div>
@@ -959,7 +963,7 @@ function renderClientTable() {
        style="color:#4f8ef7;font-size:12px;text-decoration:none;">🔗 開啟</a></td>
     <td style="display:flex;gap:4px;flex-wrap:wrap;">
       <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
-        onclick="editClientRates('${c.name}','${c.dayRate||''}','${c.nightRate||''}','${c.dayOt134Base||''}','${c.dayOt167Base||''}','${c.nightOt134Base||''}','${c.nightOt167Base||''}','${c.dayStart||'08:00'}','${c.nightStart||'20:30'}')">💰薪資</button>
+        onclick="editClientRates(this)"        data-name="${c.name}" data-dr="${c.dayRate||''}" data-nr="${c.nightRate||''}"        data-d134="${c.dayOt134Base||''}" data-d167="${c.dayOt167Base||''}"        data-n134="${c.nightOt134Base||''}" data-n167="${c.nightOt167Base||''}"        data-ds="${c.dayStart||'08:00'}" data-de="${c.dayEnd||'16:30'}"        data-ns="${c.nightStart||'20:30'}" data-ne="${c.nightEnd||'05:00'}">💰薪資</button>
       <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
         onclick="editClientCoord('${c.name}','${c.lat||''}','${c.lng||''}','${c.radius||100}')">座標</button>
       <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
@@ -990,8 +994,10 @@ async function saveClient() {
   const nightOt134Base= document.getElementById('c-nightOt134').value.trim();
   const nightOt167Base= document.getElementById('c-nightOt167').value.trim();
   const dayStart      = document.getElementById('c-dayStart').value.trim() || '08:00';
+  const dayEnd        = document.getElementById('c-dayEnd').value.trim() || '16:30';
   const nightStart    = document.getElementById('c-nightStart').value.trim() || '20:30';
-  const res = await gasPost({ action: 'add_client', name, pw, lat, lng, radius, note, dayRate, nightRate, dayOt134Base, dayOt167Base, nightOt134Base, nightOt167Base, dayStart, nightStart });
+  const nightEnd      = document.getElementById('c-nightEnd').value.trim() || '05:00';
+  const res = await gasPost({ action: 'add_client', name, pw, lat, lng, radius, note, dayRate, nightRate, dayOt134Base, dayOt167Base, nightOt134Base, nightOt167Base, dayStart, dayEnd, nightStart, nightEnd });
     if (!res.success) throw new Error(res.error);
     allClients = res.clients || [];
     renderClientTable(); refreshClientSelects();
@@ -1003,7 +1009,18 @@ async function saveClient() {
   } catch(e) { setSS('client-sync', 'err', '失敗'); toast('❌ 儲存失敗：' + e.message, true); }
 }
 
-async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, ns) {
+async function editClientRates(btn) {
+  const name = btn.dataset.name;
+  const dr   = btn.dataset.dr;
+  const nr   = btn.dataset.nr;
+  const d134 = btn.dataset.d134;
+  const d167 = btn.dataset.d167;
+  const n134 = btn.dataset.n134;
+  const n167 = btn.dataset.n167;
+  const ds   = btn.dataset.ds;
+  const de   = btn.dataset.de;
+  const ns   = btn.dataset.ns;
+  const ne   = btn.dataset.ne;
   const div = document.createElement('div');
   div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
   div.innerHTML=`
@@ -1027,8 +1044,10 @@ async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, ns) {
           <div><label style="font-size:12px;color:#888;">×1.67 基準</label><input id="cr-n167" type="number" value="${nob2||nob}" placeholder="230" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-          <div><label style="font-size:12px;color:#888;">日班開始時間</label><input id="cr-ds" type="text" value="${ds}" placeholder="08:00" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
-          <div><label style="font-size:12px;color:#888;">夜班開始時間</label><input id="cr-ns" type="text" value="${ns}" placeholder="20:30" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">日班開始</label><input id="cr-ds" type="text" value="${ds}" placeholder="08:00" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">日班結束</label><input id="cr-de" type="text" value="${de||'16:30'}" placeholder="16:30" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">夜班開始</label><input id="cr-ns" type="text" value="${ns}" placeholder="20:30" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">夜班結束</label><input id="cr-ne" type="text" value="${ne||'05:00'}" placeholder="05:00" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
         </div>
       </div>
       <div style="display:flex;gap:10px;padding:14px 24px;border-top:1px solid #eee;">
@@ -1047,7 +1066,9 @@ async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, ns) {
       nightOt134Base: div.querySelector('#cr-n134').value,
       nightOt167Base: div.querySelector('#cr-n167').value,
       dayStart:       div.querySelector('#cr-ds').value || '08:00',
-      nightStart:     div.querySelector('#cr-ns').value || '20:30'
+      dayEnd:         div.querySelector('#cr-de').value || '16:30',
+      nightStart:     div.querySelector('#cr-ns').value || '20:30',
+      nightEnd:       div.querySelector('#cr-ne').value || '05:00'
     };
     div.remove();
     try {
