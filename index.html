@@ -1072,10 +1072,14 @@ async function editClientRates(btn) {
     };
     div.remove();
     try {
-      await gasPost(vals);
-      await loadClientUI();
-      toast('✓ 薪資設定已更新');
-    } catch(e) { toast('❌ 更新失敗', true); }
+      const qs = new URLSearchParams(vals).toString();
+      const res = await fetch(`${GAS_URL}?${qs}`).then(r=>r.json());
+      if (!res.success) throw new Error(res.error);
+      allClients = res.clients || allClients;
+      renderClientTable();
+      refreshClientSelects();
+      toast('✓ 薪資設定已更新（Sheets 同步完成）');
+    } catch(e) { toast('❌ 更新失敗：' + e.message, true); }
   };
 }
 
