@@ -251,6 +251,12 @@ tr:hover td{background:rgba(201,168,76,.04);}
           <div id="date-list" style="display:flex;flex-wrap:wrap;gap:8px;min-height:40px;padding:10px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);"></div>
           <div style="font-size:12px;color:var(--muted);margin-top:6px;">已選 <span id="date-count">0</span> 天</div>
         </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:12px;padding-top:4px;margin-bottom:8px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
+            <input type="checkbox" id="s-lunch" style="width:18px;height:18px;accent-color:var(--gold);">
+            搭伙午餐（扣餐費）
+          </label>
+        </div>
         <div class="form-group" style="margin-bottom:18px"><label>備註（選填）</label><input type="text" id="s-note" placeholder="例：代班、加班…"></div>
         <div id="staff-sync" class="sync-st" style="display:none;margin-bottom:10px;"></div>
         <button class="btn btn-primary" onclick="staffSubmit()" style="width:100%;justify-content:center;padding:13px;font-size:15px;" id="submit-btn">確認送出報班</button>
@@ -368,8 +374,22 @@ tr:hover td{background:rgba(201,168,76,.04);}
           <div class="form-group"><label>打卡範圍（公尺）</label><input type="number" id="c-radius" placeholder="預設 100" value="100" min="50" max="1000"></div>
           <div class="form-group"><label>備註（選填）</label><input type="text" id="c-note" placeholder="地址、聯絡人…"></div>
         </div>
+        <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:10px;margin-bottom:10px;font-size:13px;font-weight:700;color:var(--navy);">💰 薪資設定</div>
+        <div class="form-row">
+          <div class="form-group"><label>日班時薪</label><input type="number" id="c-dayRate" placeholder="例：215" inputmode="numeric"></div>
+          <div class="form-group"><label>夜班時薪</label><input type="number" id="c-nightRate" placeholder="例：240" inputmode="numeric"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>日班加班基準</label><input type="number" id="c-dayOtBase" placeholder="例：205" inputmode="numeric"></div>
+          <div class="form-group"><label>夜班加班基準</label><input type="number" id="c-nightOtBase" placeholder="例：230" inputmode="numeric"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>日班開始時間</label><input type="text" id="c-dayStart" placeholder="08:00" value="08:00"></div>
+          <div class="form-group"><label>夜班開始時間</label><input type="text" id="c-nightStart" placeholder="20:30" value="20:30"></div>
+        </div>
         <div class="info-box" style="margin-bottom:12px">
-          💡 座標取得方式：Google Maps 找到公司位置 → 右鍵 → 點第一行數字即可複製
+          💡 座標取得方式：Google Maps 找到公司位置 → 右鍵 → 點第一行數字即可複製<br>
+          💰 加班費計算：前2小時×1.34，第3小時起×1.67（以加班基準薪計算）
         </div>
         <button class="btn btn-primary" onclick="saveClient()">新增客戶</button>
       </div>
@@ -923,15 +943,20 @@ function renderClientTable() {
   tbody.innerHTML = allClients.map((c, i) => `<tr>
     <td>${i+1}</td>
     <td><strong>${c.name||'—'}</strong></td>
+    <td style="font-size:12px;color:var(--muted)">
+      ${c.dayRate ? '日$'+c.dayRate : ''} ${c.nightRate ? '夜$'+c.nightRate : ''}
+      ${!c.dayRate&&!c.nightRate ? '<span style="color:#f87171">未設定</span>' : ''}
+    </td>
     <td style="font-family:monospace;font-size:11px;color:var(--muted)">${c.lat&&c.lng ? `${parseFloat(c.lat).toFixed(4)},${parseFloat(c.lng).toFixed(4)}` : '<span style="color:#f87171">未設定</span>'}</td>
     <td style="font-family:monospace;font-size:12px">${c.radius||100}m</td>
-    <td style="font-family:monospace;font-size:13px">${c.pw ? '••••••' : '<span style="color:#f87171">未設定</span>'}</td>
     <td><a href="${base}?client=${encodeURIComponent(c.name||'')}" target="_blank"
        style="color:#4f8ef7;font-size:12px;text-decoration:none;">🔗 開啟</a></td>
-    <td style="display:flex;gap:6px;flex-wrap:wrap;">
-      <button class="btn-outline" style="padding:4px 10px;font-size:12px;"
+    <td style="display:flex;gap:4px;flex-wrap:wrap;">
+      <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
+        onclick="editClientRates('${c.name}','${c.dayRate||''}','${c.nightRate||''}','${c.dayOtBase||''}','${c.nightOtBase||''}','${c.dayStart||'08:00'}','${c.nightStart||'20:30'}')">💰薪資</button>
+      <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
         onclick="editClientCoord('${c.name}','${c.lat||''}','${c.lng||''}','${c.radius||100}')">座標</button>
-      <button class="btn-outline" style="padding:4px 10px;font-size:12px;"
+      <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
         onclick="editClientPw('${c.name}','${c.pw||''}')">密碼</button>
       <button class="btn-del" onclick="deleteClient('${c.name}')">刪除</button>
     </td>
@@ -952,14 +977,66 @@ async function saveClient() {
   if (allClients.find(c => c.name === name)) { toast('⚠ 此客戶已存在', true); return; }
   setSS('client-sync', 'loading', '儲存中…');
   try {
-    const res = await gasPost({ action: 'add_client', name, pw, lat, lng, radius, note });
+    const dayRate     = document.getElementById('c-dayRate').value.trim();
+  const nightRate   = document.getElementById('c-nightRate').value.trim();
+  const dayOtBase   = document.getElementById('c-dayOtBase').value.trim();
+  const nightOtBase = document.getElementById('c-nightOtBase').value.trim();
+  const dayStart    = document.getElementById('c-dayStart').value.trim() || '08:00';
+  const nightStart  = document.getElementById('c-nightStart').value.trim() || '20:30';
+  const res = await gasPost({ action: 'add_client', name, pw, lat, lng, radius, note, dayRate, nightRate, dayOtBase, nightOtBase, dayStart, nightStart });
     if (!res.success) throw new Error(res.error);
     allClients = res.clients || [];
     renderClientTable(); refreshClientSelects();
     setSS('client-sync', 'done', '已儲存'); toast('✓ 客戶已新增：' + name);
-    ['c-name','c-pw','c-lat','c-lng','c-note'].forEach(id => document.getElementById(id).value = '');
+    ['c-name','c-pw','c-lat','c-lng','c-note','c-dayRate','c-nightRate','c-dayOtBase','c-nightOtBase'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('c-radius').value = '100';
+    document.getElementById('c-dayStart').value = '08:00';
+    document.getElementById('c-nightStart').value = '20:30';
   } catch(e) { setSS('client-sync', 'err', '失敗'); toast('❌ 儲存失敗：' + e.message, true); }
+}
+
+async function editClientRates(name, dr, nr, dob, nob, ds, ns) {
+  const div = document.createElement('div');
+  div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  div.innerHTML=`
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;box-shadow:0 16px 48px rgba(0,0,0,0.25);overflow:hidden;">
+      <div style="padding:20px 24px 14px;border-bottom:2px solid #f0d98a;">
+        <div style="font-size:17px;font-weight:800;color:#162035;">💰 「${name}」薪資設定</div>
+      </div>
+      <div style="padding:16px 24px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label style="font-size:12px;color:#888;">日班時薪</label><input id="cr-dr" type="number" value="${dr}" placeholder="215" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">夜班時薪</label><input id="cr-nr" type="number" value="${nr}" placeholder="240" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">日班加班基準</label><input id="cr-dob" type="number" value="${dob}" placeholder="205" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">夜班加班基準</label><input id="cr-nob" type="number" value="${nob}" placeholder="230" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">日班開始時間</label><input id="cr-ds" type="text" value="${ds}" placeholder="08:00" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">夜班開始時間</label><input id="cr-ns" type="text" value="${ns}" placeholder="20:30" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+        </div>
+        <div style="font-size:11px;color:#aaa;margin-top:8px;">加班費：前2小時×1.34 / 第3小時起×1.67</div>
+      </div>
+      <div style="display:flex;gap:10px;padding:14px 24px;border-top:1px solid #eee;">
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:12px;border:2px solid #ddd;border-radius:12px;background:none;cursor:pointer;font-size:14px;font-family:inherit;">取消</button>
+        <button id="cr-save" style="flex:2;padding:12px;background:#c9a84c;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;color:#162035;">儲存</button>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+  div.querySelector('#cr-save').onclick = async () => {
+    const vals = {
+      action:'update_client_rates', name,
+      dayRate: div.querySelector('#cr-dr').value,
+      nightRate: div.querySelector('#cr-nr').value,
+      dayOtBase: div.querySelector('#cr-dob').value,
+      nightOtBase: div.querySelector('#cr-nob').value,
+      dayStart: div.querySelector('#cr-ds').value || '08:00',
+      nightStart: div.querySelector('#cr-ns').value || '20:30'
+    };
+    div.remove();
+    try {
+      await gasPost(vals);
+      await loadClientUI();
+      toast('✓ 薪資設定已更新');
+    } catch(e) { toast('❌ 更新失敗', true); }
+  };
 }
 
 async function editClientCoord(name, currentLat, currentLng, currentRadius) {
@@ -1125,7 +1202,8 @@ async function staffSubmit() {
         ? fresh.find(r=>r.empid===empid&&r.date===date&&r.shift===shift&&r.client===client)
         : fresh.find(r=>r.name===name&&r.date===date&&r.shift===shift&&r.client===client);
       if (dup) { skipped.push(date); continue; }
-      await dbAdd('shifts',{name,empid:empid||'待填入',date,client,shift,note,status:'pending'});
+      const lunch = document.getElementById('s-lunch') ? document.getElementById('s-lunch').checked : false;
+      await dbAdd('shifts',{name,empid:empid||'待填入',date,client,shift,note,lunch,status:'pending'});
       success.push(date);
     }
 
