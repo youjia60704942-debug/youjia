@@ -379,9 +379,15 @@ tr:hover td{background:rgba(201,168,76,.04);}
           <div class="form-group"><label>日班時薪</label><input type="number" id="c-dayRate" placeholder="例：215" inputmode="numeric"></div>
           <div class="form-group"><label>夜班時薪</label><input type="number" id="c-nightRate" placeholder="例：240" inputmode="numeric"></div>
         </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">日班加班基準（前2hr×1.34，第3hr起×1.67）</div>
         <div class="form-row">
-          <div class="form-group"><label>日班加班基準</label><input type="number" id="c-dayOtBase" placeholder="例：205" inputmode="numeric"></div>
-          <div class="form-group"><label>夜班加班基準</label><input type="number" id="c-nightOtBase" placeholder="例：230" inputmode="numeric"></div>
+          <div class="form-group"><label>日班 ×1.34 基準</label><input type="number" id="c-dayOt134" placeholder="例：205" inputmode="numeric"></div>
+          <div class="form-group"><label>日班 ×1.67 基準</label><input type="number" id="c-dayOt167" placeholder="例：205" inputmode="numeric"></div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">夜班加班基準</div>
+        <div class="form-row">
+          <div class="form-group"><label>夜班 ×1.34 基準</label><input type="number" id="c-nightOt134" placeholder="例：230" inputmode="numeric"></div>
+          <div class="form-group"><label>夜班 ×1.67 基準</label><input type="number" id="c-nightOt167" placeholder="例：230" inputmode="numeric"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>日班開始時間</label><input type="text" id="c-dayStart" placeholder="08:00" value="08:00"></div>
@@ -953,7 +959,7 @@ function renderClientTable() {
        style="color:#4f8ef7;font-size:12px;text-decoration:none;">🔗 開啟</a></td>
     <td style="display:flex;gap:4px;flex-wrap:wrap;">
       <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
-        onclick="editClientRates('${c.name}','${c.dayRate||''}','${c.nightRate||''}','${c.dayOtBase||''}','${c.nightOtBase||''}','${c.dayStart||'08:00'}','${c.nightStart||'20:30'}')">💰薪資</button>
+        onclick="editClientRates('${c.name}','${c.dayRate||''}','${c.nightRate||''}','${c.dayOt134Base||''}','${c.dayOt167Base||''}','${c.nightOt134Base||''}','${c.nightOt167Base||''}','${c.dayStart||'08:00'}','${c.nightStart||'20:30'}')">💰薪資</button>
       <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
         onclick="editClientCoord('${c.name}','${c.lat||''}','${c.lng||''}','${c.radius||100}')">座標</button>
       <button class="btn-outline" style="padding:3px 8px;font-size:11px;"
@@ -977,25 +983,27 @@ async function saveClient() {
   if (allClients.find(c => c.name === name)) { toast('⚠ 此客戶已存在', true); return; }
   setSS('client-sync', 'loading', '儲存中…');
   try {
-    const dayRate     = document.getElementById('c-dayRate').value.trim();
-  const nightRate   = document.getElementById('c-nightRate').value.trim();
-  const dayOtBase   = document.getElementById('c-dayOtBase').value.trim();
-  const nightOtBase = document.getElementById('c-nightOtBase').value.trim();
-  const dayStart    = document.getElementById('c-dayStart').value.trim() || '08:00';
-  const nightStart  = document.getElementById('c-nightStart').value.trim() || '20:30';
-  const res = await gasPost({ action: 'add_client', name, pw, lat, lng, radius, note, dayRate, nightRate, dayOtBase, nightOtBase, dayStart, nightStart });
+    const dayRate       = document.getElementById('c-dayRate').value.trim();
+  const nightRate     = document.getElementById('c-nightRate').value.trim();
+  const dayOt134Base  = document.getElementById('c-dayOt134').value.trim();
+  const dayOt167Base  = document.getElementById('c-dayOt167').value.trim();
+  const nightOt134Base= document.getElementById('c-nightOt134').value.trim();
+  const nightOt167Base= document.getElementById('c-nightOt167').value.trim();
+  const dayStart      = document.getElementById('c-dayStart').value.trim() || '08:00';
+  const nightStart    = document.getElementById('c-nightStart').value.trim() || '20:30';
+  const res = await gasPost({ action: 'add_client', name, pw, lat, lng, radius, note, dayRate, nightRate, dayOt134Base, dayOt167Base, nightOt134Base, nightOt167Base, dayStart, nightStart });
     if (!res.success) throw new Error(res.error);
     allClients = res.clients || [];
     renderClientTable(); refreshClientSelects();
     setSS('client-sync', 'done', '已儲存'); toast('✓ 客戶已新增：' + name);
-    ['c-name','c-pw','c-lat','c-lng','c-note','c-dayRate','c-nightRate','c-dayOtBase','c-nightOtBase'].forEach(id => document.getElementById(id).value = '');
+    ['c-name','c-pw','c-lat','c-lng','c-note','c-dayRate','c-nightRate','c-dayOt134','c-dayOt167','c-nightOt134','c-nightOt167'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('c-radius').value = '100';
     document.getElementById('c-dayStart').value = '08:00';
     document.getElementById('c-nightStart').value = '20:30';
   } catch(e) { setSS('client-sync', 'err', '失敗'); toast('❌ 儲存失敗：' + e.message, true); }
 }
 
-async function editClientRates(name, dr, nr, dob, nob, ds, ns) {
+async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, ns) {
   const div = document.createElement('div');
   div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
   div.innerHTML=`
@@ -1007,12 +1015,21 @@ async function editClientRates(name, dr, nr, dob, nob, ds, ns) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div><label style="font-size:12px;color:#888;">日班時薪</label><input id="cr-dr" type="number" value="${dr}" placeholder="215" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
           <div><label style="font-size:12px;color:#888;">夜班時薪</label><input id="cr-nr" type="number" value="${nr}" placeholder="240" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
-          <div><label style="font-size:12px;color:#888;">日班加班基準</label><input id="cr-dob" type="number" value="${dob}" placeholder="205" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
-          <div><label style="font-size:12px;color:#888;">夜班加班基準</label><input id="cr-nob" type="number" value="${nob}" placeholder="230" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin:10px 0 6px;font-weight:600;">日班加班基準</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label style="font-size:12px;color:#888;">×1.34 基準</label><input id="cr-d134" type="number" value="${dob}" placeholder="205" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">×1.67 基準</label><input id="cr-d167" type="number" value="${dob2||dob}" placeholder="205" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+        </div>
+        <div style="font-size:12px;color:#888;margin:10px 0 6px;font-weight:600;">夜班加班基準</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label style="font-size:12px;color:#888;">×1.34 基準</label><input id="cr-n134" type="number" value="${nob}" placeholder="230" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div><label style="font-size:12px;color:#888;">×1.67 基準</label><input id="cr-n167" type="number" value="${nob2||nob}" placeholder="230" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
           <div><label style="font-size:12px;color:#888;">日班開始時間</label><input id="cr-ds" type="text" value="${ds}" placeholder="08:00" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
           <div><label style="font-size:12px;color:#888;">夜班開始時間</label><input id="cr-ns" type="text" value="${ns}" placeholder="20:30" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
         </div>
-        <div style="font-size:11px;color:#aaa;margin-top:8px;">加班費：前2小時×1.34 / 第3小時起×1.67</div>
       </div>
       <div style="display:flex;gap:10px;padding:14px 24px;border-top:1px solid #eee;">
         <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:12px;border:2px solid #ddd;border-radius:12px;background:none;cursor:pointer;font-size:14px;font-family:inherit;">取消</button>
@@ -1023,12 +1040,14 @@ async function editClientRates(name, dr, nr, dob, nob, ds, ns) {
   div.querySelector('#cr-save').onclick = async () => {
     const vals = {
       action:'update_client_rates', name,
-      dayRate: div.querySelector('#cr-dr').value,
-      nightRate: div.querySelector('#cr-nr').value,
-      dayOtBase: div.querySelector('#cr-dob').value,
-      nightOtBase: div.querySelector('#cr-nob').value,
-      dayStart: div.querySelector('#cr-ds').value || '08:00',
-      nightStart: div.querySelector('#cr-ns').value || '20:30'
+      dayRate:        div.querySelector('#cr-dr').value,
+      nightRate:      div.querySelector('#cr-nr').value,
+      dayOt134Base:   div.querySelector('#cr-d134').value,
+      dayOt167Base:   div.querySelector('#cr-d167').value,
+      nightOt134Base: div.querySelector('#cr-n134').value,
+      nightOt167Base: div.querySelector('#cr-n167').value,
+      dayStart:       div.querySelector('#cr-ds').value || '08:00',
+      nightStart:     div.querySelector('#cr-ns').value || '20:30'
     };
     div.remove();
     try {
