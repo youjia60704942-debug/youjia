@@ -532,39 +532,55 @@ async function uploadPhotos(name) {
   const year  = new Date().getFullYear().toString();
 
   const files = [
-    { file: front, label: '身分證正面', ext: (front.name.split('.').pop()||'jpg') },
-    { file: back,  label: '身分證反面', ext: (back.name.split('.').pop()||'jpg')  },
-    { file: bank,  label: '銀行存摺',   ext: (bank.name.split('.').pop()||'jpg')  }
+    { file: front, label: '身分證正面' },
+    { file: back,  label: '身分證反面' },
+    { file: bank,  label: '銀行存摺'   }
   ];
 
   for (const f of files) {
-    const b64      = await toBase64(f.file);
-    const filename = `${name}_${f.label}.${f.ext}`;
-    const chunkSize = 50000; // 每段 50KB
-    const chunks   = [];
-    for (let i = 0; i < b64.length; i += chunkSize) {
-      chunks.push(b64.slice(i, i + chunkSize));
-    }
-    const total = chunks.length;
-
-    // 先送出第一段（含 total 數量）
-    for (let i = 0; i < chunks.length; i++) {
-      const params = new URLSearchParams({
-        action:   'upload_chunk',
-        name, year, filename,
-        mimeType: f.file.type,
-        chunk:    chunks[i],
-        index:    i,
-        total:    total
+    const ext      = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
+    const filename = name + '_' + f.label + '.' + ext;
+    // 壓縮後轉 base64（減少大小，提高上傳成功率）
+    const b64 = await compressAndToBase64(f.file, 1200, 0.75);
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'upload_employee_file',
+          name, year, filename,
+          mimeType: 'image/jpeg',
+          data: b64
+        })
       });
-      try {
-        await fetch(`${GAS_URL}?${params}`).then(r => r.json());
-      } catch(err) {
-        console.log('chunk 送出失敗:', i, err);
-      }
+      console.log('上傳送出:', f.label);
+    } catch(err) {
+      console.log('上傳失敗:', f.label, err);
     }
-    console.log('上傳完成:', f.label, total, '段');
+    await new Promise(r => setTimeout(r, 3000));
   }
+}
+
+// 壓縮圖片並轉 base64（去掉 data: 前綴）
+function compressAndToBase64(file, maxPx, quality) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxPx || h > maxPx) {
+        if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+        else       { w = Math.round(w * maxPx / h); h = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
+    };
+    img.src = url;
+  });
 }
 
 async function submit() {
