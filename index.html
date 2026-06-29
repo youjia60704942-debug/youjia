@@ -1380,41 +1380,25 @@ async function deleteRecord(id) {
 
 // LINE 通知 via Make.com Webhook（解決 CORS 問題）
 async function sendLine(empid, name, date, shift, client) {
-  // 先用工號找，找不到再用姓名找
   const emp = allEmployees.find(e => e.empid === empid && e.empid !== '待填入')
            || allEmployees.find(e => e.name === name);
-
-  if (!emp) {
-    toast(`⚠ 找不到「${name}」的員工資料，LINE 通知未發送`, true);
-    return;
-  }
+  if (!emp) { toast(`⚠ 找不到「${name}」的員工資料，LINE 通知未發送`, true); return; }
   if (!emp.lineId || emp.lineId.trim() === '') {
-    toast(`⚠ 「${name}」尚未綁定 LINE Bot，LINE 通知未發送（請員工先加 Bot 好友填寫履歷）`, true);
-    return;
+    toast(`⚠ 「${name}」尚未綁定 LINE Bot，LINE 通知未發送`, true); return;
   }
   try {
-    await fetch(MAKE_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        source: 'web',
-        lineId: emp.lineId,
-        name,
-        date: fmtDate(date),
-        shift,
-        message: (() => {
-          const c = allClients.find(x=>x.name===client);
-          const startTime = c ? (shift==='日班'?c.dayStart:c.nightStart)||'' : '';
-          const endTime   = c ? (shift==='日班'?c.dayEnd:c.nightEnd)||'' : '';
-          const notice    = c && c.notice ? `${nl2}📋 注意事項：${c.notice}` : '';
-          const nl2 = '\n';
-          const timeInfo  = startTime ? `${nl2}⏰ 上班時間：${startTime}${nl2}🔚 下班時間：${endTime}` : '';
-          const nl = '\n';
-          return `【優佳人力報班通知】${nl}${name} 您好！您的報班申請已通過。${nl}${nl}📅 日期：${fmtDate(date)}${nl}🏭 廠商：${client||''}${nl}📌 班別：${shift}${timeInfo}${notice}${nl}${nl}📍 請準時到廠打卡，如有疑問請聯繫管理師。`;
-        })()
-      })
+    // 透過 Apps Script 轉發，避免前端 CORS 問題
+    const params = new URLSearchParams({
+      action: 'send_approve_notify',
+      lineId: emp.lineId,
+      name, date, shift, client: client||''
     });
-    toast(`✓ LINE 通知已發送給 ${name}`);
+    const res = await fetch(`${GAS_URL}?${params}`).then(r=>r.json());
+    if (res.success) {
+      toast(`✓ LINE 通知已發送給 ${name}`);
+    } else {
+      toast(`⚠ 通知發送失敗：${res.error||'未知錯誤'}`, true);
+    }
   } catch(e) { toast('⚠ LINE 通知發送失敗，請檢查網路', true); }
 }
 
