@@ -123,6 +123,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--navy
   <div class="ps" id="p2">② 聯絡資訊</div>
   <div class="ps" id="p3">③ 銀行帳號</div>
   <div class="ps" id="p4">④ 學歷技能</div>
+  <div class="ps" id="p45">📷 上傳證件</div>
   <div class="ps" id="p5">⑤ 確認送出</div>
 </div>
 
@@ -280,7 +281,53 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--navy
   </div>
   <div class="brow">
     <button class="btn btn-o" onclick="go(4,3)">← 上一步</button>
-    <button class="btn btn-p" onclick="goPreview()">預覽確認 →</button>
+    <button class="btn btn-p" onclick="go(4,45)">下一步 →</button>
+  </div>
+</div>
+
+<!-- 4.5 照片上傳 -->
+<div class="card" id="c45">
+  <div class="ctitle">📷 上傳證件照片</div>
+  <div style="background:#fff8e0;border:1px solid #f0d060;border-radius:12px;padding:16px 18px;margin-bottom:20px;">
+    <div style="font-size:15px;font-weight:700;color:#7a5a00;margin-bottom:8px;">🔒 隱私保障聲明</div>
+    <div style="font-size:13px;color:#7a5a00;line-height:1.8;">
+      您所上傳的證件照片<strong>僅供優佳人力資源公司</strong>作為員工身份驗證及勞資關係建立之用途，絕不會提供給第三方或用於其他用途。<br>
+      所有檔案均儲存於公司專屬的機密檔案內，僅管理師可存取。<br>
+      如有疑慮，請直接聯繫管理師確認。
+    </div>
+  </div>
+  <div style="font-size:13px;color:#888;margin-bottom:20px;">請上傳清晰照片，確保文字可辨識。每張照片限 5MB 以內。</div>
+
+  <div class="fld">
+    <label>身分證正面 <span class="req">*</span></label>
+    <div style="border:2px dashed #ddd;border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#fafafa;" onclick="document.getElementById('img-id-front').click()">
+      <input type="file" id="img-id-front" accept="image/*" capture="environment" style="display:none" onchange="previewImg(this,'prev-id-front')">
+      <img id="prev-id-front" style="max-width:100%;max-height:200px;display:none;border-radius:8px;margin-bottom:8px;">
+      <div id="hint-id-front" style="color:#aaa;font-size:14px;">📷 點此拍照或選擇圖片</div>
+    </div>
+  </div>
+
+  <div class="fld">
+    <label>身分證反面 <span class="req">*</span></label>
+    <div style="border:2px dashed #ddd;border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#fafafa;" onclick="document.getElementById('img-id-back').click()">
+      <input type="file" id="img-id-back" accept="image/*" capture="environment" style="display:none" onchange="previewImg(this,'prev-id-back')">
+      <img id="prev-id-back" style="max-width:100%;max-height:200px;display:none;border-radius:8px;margin-bottom:8px;">
+      <div id="hint-id-back" style="color:#aaa;font-size:14px;">📷 點此拍照或選擇圖片</div>
+    </div>
+  </div>
+
+  <div class="fld">
+    <label>銀行存摺封面（含帳號頁）<span class="req">*</span></label>
+    <div style="border:2px dashed #ddd;border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#fafafa;" onclick="document.getElementById('img-bankbook').click()">
+      <input type="file" id="img-bankbook" accept="image/*" capture="environment" style="display:none" onchange="previewImg(this,'prev-bankbook')">
+      <img id="prev-bankbook" style="max-width:100%;max-height:200px;display:none;border-radius:8px;margin-bottom:8px;">
+      <div id="hint-bankbook" style="color:#aaa;font-size:14px;">📷 點此拍照或選擇圖片</div>
+    </div>
+  </div>
+
+  <div class="brow">
+    <button class="btn btn-o" onclick="go(45,4)">← 上一步</button>
+    <button class="btn btn-p" onclick="goToConfirm()">預覽確認 →</button>
   </div>
 </div>
 
@@ -291,7 +338,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--navy
   <div class="warn-box">⚠ 請確認以上資料正確無誤，送出後如需修改請聯繫管理師。</div>
   <div id="sub-msg" style="font-size:13px;color:var(--muted);margin-top:10px;display:none;"></div>
   <div class="brow">
-    <button class="btn btn-o" onclick="go(5,4)">← 修改</button>
+    <button class="btn btn-o" onclick="go(5,45)">← 修改</button>
     <button class="btn btn-g" id="sub-btn" onclick="submit()">✓ 確認送出</button>
   </div>
 </div>
@@ -379,16 +426,24 @@ function validate(sec) {
 }
 
 function setPage(n) {
-  for (let i = 1; i <= 5; i++) {
-    document.getElementById(`c${i}`).classList.toggle('on', i === n);
+  const pages = [1, 2, 3, 4, 45, 5];
+  pages.forEach(i => {
+    const c = document.getElementById(`c${i}`);
+    if (c) c.classList.toggle('on', i === n);
     const p = document.getElementById(`p${i}`);
-    p.className = 'ps' + (i < n ? ' ok' : i === n ? ' on' : '');
-  }
+    if (p) {
+      const idx = pages.indexOf(i);
+      const cur = pages.indexOf(n);
+      p.className = 'ps' + (idx < cur ? ' ok' : idx === cur ? ' on' : '');
+    }
+  });
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
 function go(from, to) {
-  if (to > from && !validate(from)) return;
+  const order = [1, 2, 3, 4, 45, 5];
+  const fi = order.indexOf(from), ti = order.indexOf(to);
+  if (ti > fi && !validate(from)) return;
   setPage(to);
 }
 
@@ -433,6 +488,66 @@ function buildPreview() {
     ${row('其他說明', g('notes'))}
   </table>`;
   document.getElementById('pv').innerHTML = html;
+}
+
+function previewImg(input, previewId) {
+  const file = input.files[0];
+  if (!file) return;
+  const hintId = previewId.replace('prev-','hint-');
+  const prev = document.getElementById(previewId);
+  const hint = document.getElementById(hintId);
+  const reader = new FileReader();
+  reader.onload = e => {
+    prev.src = e.target.result;
+    prev.style.display = 'block';
+    hint.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function goToConfirm() {
+  const front = document.getElementById('img-id-front').files[0];
+  const back  = document.getElementById('img-id-back').files[0];
+  const bank  = document.getElementById('img-bankbook').files[0];
+  if (!front) { alert('請上傳身分證正面'); return; }
+  if (!back)  { alert('請上傳身分證反面'); return; }
+  if (!bank)  { alert('請上傳銀行存摺照片'); return; }
+  go(5, 45);
+}
+
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadPhotos(name) {
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxXs2mDh1cZYy64cFJ87VGqiTl49wbTlPudoevmojhudp0diUZhffLrRWfkC8ZzRGef/exec';
+  const front = document.getElementById('img-id-front').files[0];
+  const back  = document.getElementById('img-id-back').files[0];
+  const bank  = document.getElementById('img-bankbook').files[0];
+  const year  = new Date().getFullYear().toString();
+
+  const files = [
+    { file: front, label: '身分證正面', ext: front.name.split('.').pop() },
+    { file: back,  label: '身分證反面', ext: back.name.split('.').pop() },
+    { file: bank,  label: '銀行存摺',   ext: bank.name.split('.').pop() }
+  ];
+
+  for (const f of files) {
+    const b64 = await toBase64(f.file);
+    const params = new URLSearchParams({
+      action: 'upload_employee_file',
+      name, year,
+      filename: `${name}_${f.label}.${f.ext}`,
+      mimeType: f.file.type,
+      data: b64
+    });
+    await fetch(`${GAS_URL}?${params}`).catch(e => console.log('上傳失敗:', f.label, e));
+  }
 }
 
 async function submit() {
@@ -480,6 +595,13 @@ async function submit() {
       console.log('Sheets同步失敗（不影響主要流程）:', sheetErr);
     }
 
+    // 上傳照片到 Google Drive
+    msg.textContent = '⏳ 上傳照片中…';
+    try {
+      await uploadPhotos(data.name);
+    } catch(photoErr) {
+      console.log('照片上傳失敗（不影響主要流程）:', photoErr);
+    }
     msg.textContent = '✓ 送出成功！';
     setTimeout(() => {
       document.querySelector('.prog').style.display = 'none';
