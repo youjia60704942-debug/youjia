@@ -512,7 +512,8 @@ function goToConfirm() {
   if (!front) { alert('請上傳身分證正面'); return; }
   if (!back)  { alert('請上傳身分證反面'); return; }
   if (!bank)  { alert('請上傳銀行存摺照片'); return; }
-  go(5, 45);
+  buildPreview();
+  setPage(5);
 }
 
 function toBase64(file) {
@@ -532,21 +533,31 @@ async function uploadPhotos(name) {
   const year  = new Date().getFullYear().toString();
 
   const files = [
-    { file: front, label: '身分證正面', ext: front.name.split('.').pop() },
-    { file: back,  label: '身分證反面', ext: back.name.split('.').pop() },
-    { file: bank,  label: '銀行存摺',   ext: bank.name.split('.').pop() }
+    { file: front, label: '身分證正面', ext: front.name.split('.').pop() || 'jpg' },
+    { file: back,  label: '身分證反面', ext: back.name.split('.').pop()  || 'jpg' },
+    { file: bank,  label: '銀行存摺',   ext: bank.name.split('.').pop()  || 'jpg' }
   ];
 
   for (const f of files) {
     const b64 = await toBase64(f.file);
-    const params = new URLSearchParams({
-      action: 'upload_employee_file',
-      name, year,
-      filename: `${name}_${f.label}.${f.ext}`,
-      mimeType: f.file.type,
-      data: b64
-    });
-    await fetch(`${GAS_URL}?${params}`).catch(e => console.log('上傳失敗:', f.label, e));
+    // 用 POST 傳送，避免 URL 長度限制
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'upload_employee_file',
+          name, year,
+          filename: `${name}_${f.label}.${f.ext}`,
+          mimeType: f.file.type,
+          data: b64
+        }),
+        redirect: 'follow'
+      });
+      console.log('上傳成功:', f.label);
+    } catch(err) {
+      console.log('上傳失敗:', f.label, err);
+    }
   }
 }
 
