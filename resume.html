@@ -540,9 +540,9 @@ async function uploadPhotos(name) {
 
   for (const f of files) {
     const b64 = await toBase64(f.file);
-    // 用 POST 傳送，避免 URL 長度限制
     try {
-      await fetch(GAS_URL, {
+      // 用 no-cors POST，Apps Script 會收到但不回應（這是正常的）
+      fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
@@ -552,11 +552,13 @@ async function uploadPhotos(name) {
           mimeType: f.file.type,
           data: b64
         }),
-        redirect: 'follow'
+        mode: 'no-cors'
       });
-      console.log('上傳成功:', f.label);
+      // 等待 Apps Script 處理（no-cors 不等回應）
+      await new Promise(r => setTimeout(r, 2000));
+      console.log('已送出:', f.label);
     } catch(err) {
-      console.log('上傳失敗:', f.label, err);
+      console.log('送出失敗:', f.label, err);
     }
   }
 }
