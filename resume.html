@@ -525,7 +525,6 @@ function toBase64(file) {
 }
 
 async function uploadPhotos(name) {
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxXs2mDh1cZYy64cFJ87VGqiTl49wbTlPudoevmojhudp0diUZhffLrRWfkC8ZzRGef/exec';
   const front = document.getElementById('img-id-front').files[0];
   const back  = document.getElementById('img-id-back').files[0];
   const bank  = document.getElementById('img-bankbook').files[0];
@@ -537,32 +536,30 @@ async function uploadPhotos(name) {
     { file: bank,  label: '銀行存摺'   }
   ];
 
+  // 壓縮後存到 Firestore photo_uploads，由 Apps Script 定時上傳到 Drive
+  const { collection, addDoc, getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const db = window._db;
+
   for (const f of files) {
     const ext      = (f.file.name.split('.').pop() || 'jpg').toLowerCase();
     const filename = name + '_' + f.label + '.' + ext;
-    // 壓縮後轉 base64（減少大小，提高上傳成功率）
     const b64 = await compressAndToBase64(f.file, 1200, 0.75);
     try {
-      await fetch(GAS_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          action: 'upload_employee_file',
-          name, year, filename,
-          mimeType: 'image/jpeg',
-          data: b64
-        })
+      await addDoc(collection(db, 'photo_uploads'), {
+        name, year, filename,
+        mimeType: 'image/jpeg',
+        data: b64,
+        createdAt: new Date().toISOString(),
+        status: 'pending'
       });
-      console.log('上傳送出:', f.label);
+      console.log('已存 Firestore:', f.label);
     } catch(err) {
-      console.log('上傳失敗:', f.label, err);
+      console.log('Firestore 存圖失敗:', f.label, err);
     }
-    await new Promise(r => setTimeout(r, 3000));
   }
 }
 
-// 壓縮圖片並轉 base64（去掉 data: 前綴）
+// 壓縮圖片並轉 base64
 function compressAndToBase64(file, maxPx, quality) {
   return new Promise((resolve) => {
     const img = new Image();
