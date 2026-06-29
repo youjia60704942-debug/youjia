@@ -1406,9 +1406,11 @@ async function sendLine(empid, name, date, shift, client) {
           const c = allClients.find(x=>x.name===client);
           const startTime = c ? (shift==='日班'?c.dayStart:c.nightStart)||'' : '';
           const endTime   = c ? (shift==='日班'?c.dayEnd:c.nightEnd)||'' : '';
-          const notice    = c && c.notice ? `\n📋 注意事項：${c.notice}` : '';
-          const timeInfo  = startTime ? `\n⏰ 上班時間：${startTime}\n🔚 下班時間：${endTime}` : '';
-          return `【優佳人力報班通知】\n${name} 您好！您的報班申請已通過。\n\n📅 日期：${fmtDate(date)}\n🏭 廠商：${client||''}\n📌 班別：${shift}${timeInfo}${notice}\n\n📍 請準時到廠打卡，如有疑問請聯繫管理師。`;
+          const notice    = c && c.notice ? `${nl2}📋 注意事項：${c.notice}` : '';
+          const nl2 = '\n';
+          const timeInfo  = startTime ? `${nl2}⏰ 上班時間：${startTime}${nl2}🔚 下班時間：${endTime}` : '';
+          const nl = '\n';
+          return `【優佳人力報班通知】${nl}${name} 您好！您的報班申請已通過。${nl}${nl}📅 日期：${fmtDate(date)}${nl}🏭 廠商：${client||''}${nl}📌 班別：${shift}${timeInfo}${notice}${nl}${nl}📍 請準時到廠打卡，如有疑問請聯繫管理師。`;
         })()
       })
     });
