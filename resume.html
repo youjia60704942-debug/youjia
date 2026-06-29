@@ -349,9 +349,8 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--navy
   <div class="s-title">資料送出成功！</div>
   <div class="s-sub">
     您的基本資料已成功送出。<br>
-    管理師將盡快處理，如有疑問請聯繫管理師。<br><br>
-    <strong>現在可以到報班系統報班了！</strong><br><br>
-    <a href="https://cozy-toffee-7ed06f.netlify.app" style="background:var(--navy);color:var(--gold-lt);padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block;margin-top:4px;">前往報班系統 →</a>
+    管理師將盡快審核，審核通過後即可開始報班。<br><br>
+    <a href="https://youjia60704942-debug.github.io/youjia/" style="background:var(--gold);color:var(--navy);padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px;display:inline-block;margin-top:8px;">📋 前往報班系統 →</a>
   </div>
 </div>
 
@@ -533,33 +532,38 @@ async function uploadPhotos(name) {
   const year  = new Date().getFullYear().toString();
 
   const files = [
-    { file: front, label: '身分證正面', ext: front.name.split('.').pop() || 'jpg' },
-    { file: back,  label: '身分證反面', ext: back.name.split('.').pop()  || 'jpg' },
-    { file: bank,  label: '銀行存摺',   ext: bank.name.split('.').pop()  || 'jpg' }
+    { file: front, label: '身分證正面', ext: (front.name.split('.').pop()||'jpg') },
+    { file: back,  label: '身分證反面', ext: (back.name.split('.').pop()||'jpg')  },
+    { file: bank,  label: '銀行存摺',   ext: (bank.name.split('.').pop()||'jpg')  }
   ];
 
   for (const f of files) {
-    const b64 = await toBase64(f.file);
-    try {
-      // 用 no-cors POST，Apps Script 會收到但不回應（這是正常的）
-      fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          action: 'upload_employee_file',
-          name, year,
-          filename: `${name}_${f.label}.${f.ext}`,
-          mimeType: f.file.type,
-          data: b64
-        }),
-        mode: 'no-cors'
-      });
-      // 等待 Apps Script 處理（no-cors 不等回應）
-      await new Promise(r => setTimeout(r, 2000));
-      console.log('已送出:', f.label);
-    } catch(err) {
-      console.log('送出失敗:', f.label, err);
+    const b64      = await toBase64(f.file);
+    const filename = `${name}_${f.label}.${f.ext}`;
+    const chunkSize = 50000; // 每段 50KB
+    const chunks   = [];
+    for (let i = 0; i < b64.length; i += chunkSize) {
+      chunks.push(b64.slice(i, i + chunkSize));
     }
+    const total = chunks.length;
+
+    // 先送出第一段（含 total 數量）
+    for (let i = 0; i < chunks.length; i++) {
+      const params = new URLSearchParams({
+        action:   'upload_chunk',
+        name, year, filename,
+        mimeType: f.file.type,
+        chunk:    chunks[i],
+        index:    i,
+        total:    total
+      });
+      try {
+        await fetch(`${GAS_URL}?${params}`).then(r => r.json());
+      } catch(err) {
+        console.log('chunk 送出失敗:', i, err);
+      }
+    }
+    console.log('上傳完成:', f.label, total, '段');
   }
 }
 
