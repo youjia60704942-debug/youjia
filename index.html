@@ -533,14 +533,17 @@ tr:hover td{background:rgba(201,168,76,.04);}
   <div class="modal">
     <div class="modal-title">補登報班</div>
     <div class="form-row">
-      <div class="form-group"><label>工號</label><input type="text" id="m-empid" placeholder="Z082" oninput="modalAcFill()"></div>
-      <div class="form-group"><label>姓名</label><input type="text" id="m-name"></div>
+      <div class="form-group"><label>工號 <span style="font-size:11px;color:var(--muted)">(選填)</span></label><input type="text" id="m-empid" placeholder="選填，填入後自動帶出資料" oninput="modalAcFill()"></div>
+      <div class="form-group"><label>姓名 <span style="color:red">*</span></label><input type="text" id="m-name" placeholder="必填"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>日期</label><input type="date" id="m-date"></div>
+      <div class="form-group"><label>廠商 <span style="color:red">*</span></label><select id="m-client"><option value="">請選擇廠商</option></select></div>
       <div class="form-group"><label>班別</label><select id="m-shift"><option value="日班">日班</option><option value="晚班">晚班</option></select></div>
     </div>
-    <div class="form-group" style="margin-bottom:4px"><label>備註</label><input type="text" id="m-note" placeholder="選填"></div>
+    <div class="form-row">
+      <div class="form-group"><label>日期 <span style="color:red">*</span></label><input type="date" id="m-date"></div>
+      <div class="form-group"><label>備註</label><input type="text" id="m-note" placeholder="選填"></div>
+    </div>
     <div class="modal-acts">
       <button class="btn btn-outline" onclick="closeModal('add-modal')">取消</button>
       <button class="btn btn-primary" onclick="addFromModal()">確認新增</button>
@@ -831,8 +834,14 @@ function acSearch() {}
 function acSelect() {}
 function modalAcFill() {
   const val = document.getElementById('m-empid').value.trim().toUpperCase();
+  if (!val) return;
   const emp = allEmployees.find(e => e.empid && e.empid.toUpperCase() === val);
-  if (emp) document.getElementById('m-name').value = emp.name;
+  if (emp) {
+    document.getElementById('m-name').value = emp.name;
+    // 自動帶入第一個派工客戶
+    const sel = document.getElementById('m-client');
+    if (sel && emp.clients && emp.clients.length) sel.value = emp.clients[0];
+  }
 }
 
 // 客戶管理
@@ -1157,11 +1166,7 @@ async function confirmIdentity(yes) {
   }
 }
 // autocomplete 已移除，舊監聽器清除
-function modalAcFill() {
-  const val = document.getElementById('m-empid').value.trim().toUpperCase();
-  const emp = allEmployees.find(e=>e.empid.toUpperCase()===val);
-  if (emp) document.getElementById('m-name').value = emp.name;
-}
+// modalAcFill 已合併
 
 // Staff
 // ── 多日期選擇器 ──────────────────────────────
@@ -1605,14 +1610,23 @@ async function deleteEmp(id) {
 function openAddModal() {
   document.getElementById('m-date').value=activeDateTab||todayStr();
   ['m-name','m-empid','m-note'].forEach(id=>document.getElementById(id).value='');
+  // 載入廠商清單
+  const sel = document.getElementById('m-client');
+  if (sel) {
+    sel.innerHTML = '<option value="">請選擇廠商</option>' +
+      (allClients||[]).map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  }
   document.getElementById('add-modal').classList.add('open');
 }
 async function addFromModal() {
-  const name=document.getElementById('m-name').value.trim(), empid=document.getElementById('m-empid').value.trim().toUpperCase();
-  const date=document.getElementById('m-date').value, shift=document.getElementById('m-shift').value, note=document.getElementById('m-note').value.trim();
-  if (!name||!empid||!date) { toast('⚠ 請填完必填欄位',true); return; }
+  const name=document.getElementById('m-name').value.trim();
+  const empid=(document.getElementById('m-empid').value||'').trim().toUpperCase()||'待填入';
+  const date=document.getElementById('m-date').value, shift=document.getElementById('m-shift').value;
+  const note=document.getElementById('m-note').value.trim();
+  const client=(document.getElementById('m-client').value||'').trim();
+  if (!name||!date||!client) { toast('⚠ 請填寫姓名、廠商和日期',true); return; }
   try {
-    await dbAdd('shifts',{name,empid,date,shift,note,status:'approved'});
+    await dbAdd('shifts',{name,empid,date,shift,note,client,status:'approved'});
     allRecords=await dbGetAll('shifts'); activeDateTab=date;
     closeModal('add-modal'); renderAdmin(); toast('✓ 補登成功！');
   } catch(e) { toast('❌ 補登失敗',true); }
