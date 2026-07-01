@@ -310,7 +310,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
         <div class="dtabs" id="dtabs"></div>
         <div class="tbl-wrap">
           <table>
-            <thead><tr><th>#</th><th>工號</th><th>姓名</th><th>班別</th><th>日期</th><th>備註</th><th>狀態</th><th>操作</th></tr></thead>
+            <thead><tr><th>#</th><th>工號</th><th>姓名</th><th>班別</th><th>廠商</th><th>日期</th><th>備註</th><th>狀態</th><th>操作</th></tr></thead>
             <tbody id="admin-tbody"></tbody>
           </table>
         </div>
@@ -1309,10 +1309,58 @@ function renderAdmin() {
   const tabs=document.getElementById('dtabs');
   if (!dates.length) { tabs.innerHTML=''; renderAdminTable([]); return; }
   if (!activeDateTab||!dates.includes(activeDateTab)) activeDateTab=dates[0];
-  tabs.innerHTML=dates.map(d=>`<button class="dtab ${d===activeDateTab?'active':''}" onclick="selectDate('${d}')">${fmtDateShort(d)}</button>`).join('');
+
+  // 按年份→月份分組，折疊式設計
+  const grouped = {};
+  dates.forEach(d => {
+    const parts = d.split(/[-\/]/);
+    const y = parts[0], m = parts[1];
+    if (!grouped[y]) grouped[y] = {};
+    if (!grouped[y][m]) grouped[y][m] = [];
+    grouped[y][m].push(d);
+  });
+
+  // 找出 activeDateTab 所在的年/月，預設展開該月
+  const activeYear = activeDateTab ? activeDateTab.split(/[-\/]/)[0] : '';
+  const activeMonth = activeDateTab ? activeDateTab.split(/[-\/]/)[1] : '';
+
+  let html = '';
+  Object.keys(grouped).sort().reverse().forEach(year => {
+    const months = Object.keys(grouped[year]).sort().reverse();
+    html += `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">`;
+    html += `<span style="font-size:12px;font-weight:700;color:var(--navy)">${year}年</span>`;
+    months.forEach(m => {
+      const isActive = year===activeYear && m===activeMonth;
+      const cnt = grouped[year][m].length;
+      html += `<button onclick="toggleMonth('${year}','${m}')" style="padding:4px 12px;border-radius:16px;border:1.5px solid ${isActive?'var(--navy)':'var(--border)'};background:${isActive?'var(--navy)':'var(--white)'};color:${isActive?'var(--gold-lt)':'var(--muted)'};font-size:12px;font-weight:600;cursor:pointer">${m}月<span style="font-size:10px;margin-left:4px;opacity:.7">(${cnt})</span></button>`;
+    });
+    html += `</div>`;
+    // 展開該年月的日期
+    months.forEach(m => {
+      const isActive = year===activeYear && m===activeMonth;
+      html += `<div id="month-${year}-${m}" style="display:${isActive?'flex':'none'};flex-wrap:wrap;gap:6px;margin-bottom:8px;padding:8px 12px;background:#f8f9fa;border-radius:8px">`;
+      grouped[year][m].forEach(d => {
+        html += `<button class="dtab ${d===activeDateTab?'active':''}" onclick="selectDate('${d}')">${fmtDateShort(d)}</button>`;
+      });
+      html += `</div>`;
+    });
+  });
+  tabs.innerHTML = html;
   renderAdminTable(filtered.filter(r=>r.date===activeDateTab));
 }
 function selectDate(d) { activeDateTab=d; renderAdmin(); }
+function toggleMonth(year, m) {
+  const el = document.getElementById('month-'+year+'-'+m);
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  if (isOpen) { el.style.display='none'; return; }
+  el.style.display = 'flex';
+  const firstBtn = el.querySelector('.dtab');
+  if (firstBtn) {
+    const match = firstBtn.getAttribute('onclick').match(/'([^']+)'/);
+    if (match) selectDate(match[1]);
+  }
+}
 function renderAdminTable(list) {
   const tbody=document.getElementById('admin-tbody');
   if (!list.length) { tbody.innerHTML='<tr><td colspan="8" class="empty">此日期尚無報班</td></tr>'; return; }
@@ -1334,6 +1382,7 @@ function renderAdminTable(list) {
       <button class="btn-del" onclick="deleteRecord('${r._id}')">刪除</button>`;
     return `<tr style="${rowStyle}"><td>${i+1}</td><td style="font-family:monospace;font-weight:600">${r.empid}</td><td><strong>${r.name}</strong>${blBadge}</td>
       <td>${r.shift==='日班'?'<span class="badge-day">日班</span>':'<span class="badge-night">晚班</span>'}</td>
+      <td style="color:var(--muted);font-size:11px">${r.client||'<span style="color:#ccc">未設定</span>'}</td>
       <td style="color:var(--muted);font-size:11px">${fmtDate(r.date)}</td>
       <td style="color:var(--muted)">${r.note||'—'}</td><td>${sb}</td><td style="white-space:nowrap">${acts}</td></tr>`;
   }).join('');
