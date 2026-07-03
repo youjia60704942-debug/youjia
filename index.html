@@ -135,10 +135,21 @@ tr:hover td{background:rgba(201,168,76,.04);}
 .menu-toggle{display:none;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:8px;line-height:1;}
 @media(max-width:768px){
   .form-row,.form-row-3{grid-template-columns:1fr;}
-  .stats{grid-template-columns:1fr 1fr;}
+  .stats{grid-template-columns:1fr 1fr;gap:8px;}
+  .stats .stat-num{font-size:24px;}
   header{padding:0 12px;}
-  .page{padding:16px 12px;}
-  .card{padding:16px 14px;}
+  .page{padding:12px 8px;}
+  .card{padding:14px 10px;}
+  /* 表格手機優化：橫向可滑動+緊湊 */
+  .card{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{font-size:12px;min-width:640px;}
+  table th,table td{padding:8px 6px;white-space:nowrap;}
+  /* 操作按鈕放大好點擊 */
+  table .btn,table button{padding:8px 10px;font-size:12px;min-height:36px;}
+  /* 日期標籤手機優化 */
+  .dtab{padding:8px 12px;font-size:12px;min-height:36px;}
+  /* Modal 手機全寬 */
+  .modal{width:94vw;max-width:94vw;padding:16px 12px;max-height:85vh;overflow-y:auto;}
   .role-cards{flex-direction:column;align-items:center;}
   .role-card{width:100%;max-width:300px;}
   /* 隱藏桌面導覽，顯示漢堡按鈕 */
@@ -542,8 +553,9 @@ tr:hover td{background:rgba(201,168,76,.04);}
     </div>
     <div class="form-row">
       <div class="form-group"><label>日期 <span style="color:red">*</span></label><input type="date" id="m-date"></div>
-      <div class="form-group"><label>備註</label><input type="text" id="m-note" placeholder="選填"></div>
+      <div class="form-group"></div>
     </div>
+    <div class="form-group" style="margin-bottom:4px"><label>備註</label><input type="text" id="m-note" placeholder="選填"></div>
     <div class="modal-acts">
       <button class="btn btn-outline" onclick="closeModal('add-modal')">取消</button>
       <button class="btn btn-primary" onclick="addFromModal()">確認新增</button>
@@ -838,7 +850,6 @@ function modalAcFill() {
   const emp = allEmployees.find(e => e.empid && e.empid.toUpperCase() === val);
   if (emp) {
     document.getElementById('m-name').value = emp.name;
-    // 自動帶入第一個派工客戶
     const sel = document.getElementById('m-client');
     if (sel && emp.clients && emp.clients.length) sel.value = emp.clients[0];
   }
@@ -1166,7 +1177,11 @@ async function confirmIdentity(yes) {
   }
 }
 // autocomplete 已移除，舊監聽器清除
-// modalAcFill 已合併
+function modalAcFill() {
+  const val = document.getElementById('m-empid').value.trim().toUpperCase();
+  const emp = allEmployees.find(e=>e.empid.toUpperCase()===val);
+  if (emp) document.getElementById('m-name').value = emp.name;
+}
 
 // Staff
 // ── 多日期選擇器 ──────────────────────────────
@@ -1314,7 +1329,6 @@ function renderAdmin() {
   const tabs=document.getElementById('dtabs');
   if (!dates.length) { tabs.innerHTML=''; renderAdminTable([]); return; }
   if (!activeDateTab||!dates.includes(activeDateTab)) activeDateTab=dates[0];
-
   // 按年份→月份分組，折疊式設計
   const grouped = {};
   dates.forEach(d => {
@@ -1325,7 +1339,6 @@ function renderAdmin() {
     grouped[y][m].push(d);
   });
 
-  // 找出 activeDateTab 所在的年/月，預設展開該月
   const activeYear = activeDateTab ? activeDateTab.split(/[-\/]/)[0] : '';
   const activeMonth = activeDateTab ? activeDateTab.split(/[-\/]/)[1] : '';
 
@@ -1340,7 +1353,6 @@ function renderAdmin() {
       html += `<button onclick="toggleMonth('${year}','${m}')" style="padding:4px 12px;border-radius:16px;border:1.5px solid ${isActive?'var(--navy)':'var(--border)'};background:${isActive?'var(--navy)':'var(--white)'};color:${isActive?'var(--gold-lt)':'var(--muted)'};font-size:12px;font-weight:600;cursor:pointer">${m}月<span style="font-size:10px;margin-left:4px;opacity:.7">(${cnt})</span></button>`;
     });
     html += `</div>`;
-    // 展開該年月的日期
     months.forEach(m => {
       const isActive = year===activeYear && m===activeMonth;
       html += `<div id="month-${year}-${m}" style="display:${isActive?'flex':'none'};flex-wrap:wrap;gap:6px;margin-bottom:8px;padding:8px 12px;background:#f8f9fa;border-radius:8px">`;
@@ -1610,7 +1622,6 @@ async function deleteEmp(id) {
 function openAddModal() {
   document.getElementById('m-date').value=activeDateTab||todayStr();
   ['m-name','m-empid','m-note'].forEach(id=>document.getElementById(id).value='');
-  // 載入廠商清單
   const sel = document.getElementById('m-client');
   if (sel) {
     sel.innerHTML = '<option value="">請選擇廠商</option>' +
