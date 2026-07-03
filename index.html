@@ -1755,6 +1755,7 @@ function showResumeDetail(id) {
   const html = `<table style="width:100%;border-collapse:collapse;">
     ${sec('基本資料')}
     ${row('姓名', r.name)}
+    ${row('性別', r.gender)}
     ${rowEdit('工號', r.empid, 'empid', r._id)}
     ${row('身分證', r.idno)}
     ${row('出生日期', r.birth)}
@@ -1777,10 +1778,43 @@ function showResumeDetail(id) {
     ${sec('系統資訊')}
     ${row('LINE ID', r.lineId||'未綁定')}
     ${row('填寫時間', r.createdAt ? r.createdAt.slice(0,19).replace('T',' ') : '—')}
+    ${sec('證件照片')}
+    <tr><td colspan="2" id="resume-photos" style="padding:10px 0">
+      <div style="color:var(--muted);font-size:12px">📷 載入照片中...</div>
+    </td></tr>
   </table>`;
 
   document.getElementById('resume-modal-body').innerHTML = html;
   document.getElementById('resume-modal').classList.add('open');
+  loadResumePhotos(r.name, r.createdAt);
+}
+
+// 載入員工證件照片（從 Google Drive）
+async function loadResumePhotos(name, createdAt) {
+  const box = document.getElementById('resume-photos');
+  if (!box || !name) return;
+  const year = createdAt ? createdAt.slice(0,4) : new Date().getFullYear().toString();
+  try {
+    const res = await gasGet({ action: 'get_emp_photos', name, year });
+    if (!res.success || !res.photos || !res.photos.length) {
+      box.innerHTML = '<div style="color:var(--muted);font-size:12px">尚無照片（員工還未上傳或處理中）</div>';
+      return;
+    }
+    box.innerHTML = '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+      res.photos.map(p => `
+        <div style="text-align:center">
+          <a href="https://drive.google.com/file/d/${p.id}/view" target="_blank">
+            <img src="https://drive.google.com/thumbnail?id=${p.id}&sz=w300" 
+              style="width:150px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+            <div style="display:none;width:150px;height:100px;background:#f5f5f5;border-radius:8px;line-height:100px;font-size:11px;color:var(--muted)">無法預覽</div>
+          </a>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">${p.label}</div>
+        </div>`).join('') +
+      '</div><div style="font-size:11px;color:var(--muted);margin-top:8px">點擊照片可開啟大圖</div>';
+  } catch(err) {
+    box.innerHTML = '<div style="color:var(--danger);font-size:12px">照片載入失敗</div>';
+  }
 }
 
 async function editResumeField(docId, field, currentVal) {
