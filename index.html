@@ -601,7 +601,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
 const MAKE_WEBHOOK = 'https://hook.us2.make.com/llcib8qu6e0cjvgmandx2a9vozuakps9';
 let ADMIN_PW = localStorage.getItem('houjia_admin_pw') || 'admin888';
 
-let allRecords = [], allEmployees = [], activeDateTab = null;
+let allRecords = [], allEmployees = [], activeDateTab = null, empidMap = {};
 let allClients = [];
 let unlocked = { admin: false, emp: false, export: false };
 
@@ -613,6 +613,11 @@ async function onDbReady() {
   document.getElementById('db-overlay').classList.add('hidden');
   document.getElementById('landing').style.display = 'flex';
   allEmployees = await dbGetAll('employees').catch(() => []);
+  // 載入 Sheets 工號對照表
+  gasGet({ action: 'get_empid_map' }).then(res => {
+    if (res && res.success) empidMap = res.map || {};
+    renderAdmin();
+  }).catch(()=>{});
   try {
     const cd = await fetch(GAS_URL + '?action=list_clients').then(r=>r.json());
     allClients = cd.clients || [];
@@ -1383,9 +1388,22 @@ function renderAdminTable(list) {
   if (!list.length) { tbody.innerHTML='<tr><td colspan="8" class="empty">此日期尚無報班</td></tr>'; return; }
   const sorted=[...list].sort((a,b)=>a.shift!==b.shift?(a.shift==='日班'?-1:1):a.empid.localeCompare(b.empid));
   tbody.innerHTML=sorted.map((r,i)=>{
-    // 查是否為黑名單
-  const empInfo = allEmployees.find(e=>e.name===r.name);
+    // 查是否為黑名單（同名多筆時優先選有工號的那筆）
+  const matches = allEmployees.filter(e=>e.name===r.name);
+  const empInfo = matches.find(e=>e.empid && e.empid !== '待填入') || matches[0];
   const isBlacklisted = empInfo && empInfo.blacklist;
+  // 工號自動比對：優先序 報班記錄 → Sheets員工清單 → Firestore
+  let displayEmpid = r.empid;
+  if (!displayEmpid || displayEmpid === '待填入') {
+    const sheetEmpid = empidMap[r.name];
+    const fsEmpid = empInfo && empInfo.empid;
+    const autoId = sheetEmpid || fsEmpid;
+    if (autoId) {
+      displayEmpid = `<span style="color:var(--gold-dk)" title="自動比對自員工資料庫">${autoId}</span>`;
+    } else {
+      displayEmpid = '<span style="color:#ccc">待填入</span>';
+    }
+  }
   const blReason = empInfo && empInfo.blacklistReason ? empInfo.blacklistReason : '';
   const blBadge = isBlacklisted ? `<span style="background:#fee2e2;color:#b91c1c;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;margin-left:4px;" title="${blReason}">⛔ 黑名單${blReason?'：'+blReason:''}</span>` : '';
   const sb=r.status==='approved'?'<span class="badge-approved">✓ 通過</span>':r.status==='rejected'?'<span class="badge-rejected">✗ 拒絕</span>':'<span class="badge-pending">待審核</span>';
@@ -1397,7 +1415,7 @@ function renderAdminTable(list) {
       ${r.status!=='rejected'?`<button class="btn-reject" onclick="rejectRecord('${r._id}','${r.name}')">✗ 拒絕</button>`:''}
       ${r.status!=='pending'?`<button class="btn-outline btn-sm" style="padding:3px 8px;font-size:11px" onclick="resetRecord('${r._id}')">↩ 待審</button>`:''}
       <button class="btn-del" onclick="deleteRecord('${r._id}')">刪除</button>`;
-    return `<tr style="${rowStyle}"><td>${i+1}</td><td style="font-family:monospace;font-weight:600">${r.empid}</td><td><strong>${r.name}</strong>${blBadge}</td>
+    return `<tr style="${rowStyle}"><td>${i+1}</td><td style="font-family:monospace;font-weight:600">${displayEmpid}</td><td><strong>${r.name}</strong>${blBadge}</td>
       <td>${r.shift==='日班'?'<span class="badge-day">日班</span>':'<span class="badge-night">晚班</span>'}</td>
       <td style="color:var(--muted);font-size:11px">${r.client||'<span style="color:#ccc">未設定</span>'}</td>
       <td style="color:var(--muted);font-size:11px">${fmtDate(r.date)}</td>
