@@ -169,36 +169,42 @@ tr:hover td{background:rgba(201,168,76,.04);}
     position:fixed;bottom:0;left:0;right:0;top:auto;
     background:var(--navy);
     flex-direction:row;
-    padding:0;
+    padding:0 0 env(safe-area-inset-bottom) 0;
     z-index:200;
     box-shadow:0 -2px 16px rgba(0,0,0,0.25);
     border-top:1px solid rgba(201,168,76,0.15);
-    height:62px;
+    height:60px;
     overflow-x:auto;
     -webkit-overflow-scrolling:touch;
     scrollbar-width:none;
   }
   nav#main-nav::-webkit-scrollbar{display:none;}
   nav#main-nav button{
-    flex:1;min-width:60px;max-width:80px;
+    flex:1;min-width:52px;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:4px 2px 6px;
-    font-size:10px;font-weight:600;
+    padding:6px 2px;
+    font-size:9px;font-weight:600;letter-spacing:-0.2px;
     border-radius:0;border:none;border-top:2px solid transparent;
-    color:rgba(255,255,255,0.45);
-    gap:2px;white-space:nowrap;text-align:center;
-    line-height:1.2;
+    color:rgba(255,255,255,0.4);
+    gap:3px;white-space:nowrap;text-align:center;
+    line-height:1;
   }
-  nav#main-nav button .tab-icon{font-size:18px;line-height:1;}
+  nav#main-nav button .tab-icon{font-size:20px;line-height:1;display:block;}
   nav#main-nav button.active{
     color:var(--gold-lt);
-    background:rgba(201,168,76,0.1);
+    background:rgba(201,168,76,0.08);
     border-top:2px solid var(--gold);
+  }
+  /* 登出按鈕縮小 */
+  nav#main-nav button[onclick*="adminLogout"]{
+    min-width:40px;flex:0 0 40px;
+    font-size:8px;
+    color:rgba(255,255,255,0.2);
   }
   /* 頁面底部留白，避免被 tab bar 蓋住 */
   .page{padding-bottom:80px;}
-  /* Toast 移到 tab bar 上方 */
-  #toast{bottom:76px;}
+  /* Toast 移到 tab bar 上方，縮短停留時間 */
+  #toast{bottom:70px;font-size:12px;padding:9px 18px;}
   .menu-toggle{display:none !important;}
   .h-badge{display:none;}
   header{padding:0 16px;height:56px;}
@@ -709,7 +715,11 @@ function fmtDateShort(ds) {
 function toast(msg, err) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.style.background = err ? 'var(--danger)' : 'var(--navy)';
-  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4500);
+  t.classList.remove('show');
+  void t.offsetWidth; // 強制 reflow，確保動畫重置
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
 }
 function setSS(id, state, msg) {
   const el = document.getElementById(id); if (!el) return;
