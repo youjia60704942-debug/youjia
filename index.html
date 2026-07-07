@@ -163,23 +163,45 @@ tr:hover td{background:rgba(201,168,76,.04);}
   .role-cards{flex-direction:column;align-items:center;}
   .role-card{width:100%;max-width:300px;}
   /* 隱藏桌面導覽，顯示漢堡按鈕 */
+  /* 底部 Tab Bar */
   nav#main-nav{
-    display:none;
-    position:fixed;top:64px;left:0;right:0;
+    display:flex !important;
+    position:fixed;bottom:0;left:0;right:0;top:auto;
     background:var(--navy);
-    flex-direction:column;
-    padding:12px 0;
+    flex-direction:row;
+    padding:0;
     z-index:200;
-    box-shadow:0 8px 24px rgba(0,0,0,0.3);
+    box-shadow:0 -2px 16px rgba(0,0,0,0.25);
+    border-top:1px solid rgba(201,168,76,0.15);
+    height:62px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
   }
-  nav#main-nav.open{display:flex;}
+  nav#main-nav::-webkit-scrollbar{display:none;}
   nav#main-nav button{
-    width:100%;text-align:left;
-    padding:14px 24px;font-size:15px;
-    border-radius:0;border-bottom:1px solid rgba(255,255,255,0.06);
+    flex:1;min-width:60px;max-width:80px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:4px 2px 6px;
+    font-size:10px;font-weight:600;
+    border-radius:0;border:none;border-top:2px solid transparent;
+    color:rgba(255,255,255,0.45);
+    gap:2px;white-space:nowrap;text-align:center;
+    line-height:1.2;
   }
-  .menu-toggle{display:block;}
+  nav#main-nav button .tab-icon{font-size:18px;line-height:1;}
+  nav#main-nav button.active{
+    color:var(--gold-lt);
+    background:rgba(201,168,76,0.1);
+    border-top:2px solid var(--gold);
+  }
+  /* 頁面底部留白，避免被 tab bar 蓋住 */
+  .page{padding-bottom:80px;}
+  /* Toast 移到 tab bar 上方 */
+  #toast{bottom:76px;}
+  .menu-toggle{display:none !important;}
   .h-badge{display:none;}
+  header{padding:0 16px;height:56px;}
 }
 </style>
 </head>
@@ -687,7 +709,7 @@ function fmtDateShort(ds) {
 function toast(msg, err) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.style.background = err ? 'var(--danger)' : 'var(--navy)';
-  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000);
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4500);
 }
 function setSS(id, state, msg) {
   const el = document.getElementById(id); if (!el) return;
@@ -712,14 +734,14 @@ function enterRole(role) {
     showPage('pg-staff');
   } else {
     nav.innerHTML = `
-      <button class="active" onclick="showPage('pg-admin',this)">報班審核</button>
-      <button onclick="showPage('pg-emp',this)">員工資料庫</button>
-      <button onclick="showPage('pg-attend',this)">📋 今日出勤</button>
-      <button onclick="showPage('pg-client',this)">🏭 客戶管理</button>
-      <button onclick="showPage('pg-export',this)">匯出名單</button>
-      <button onclick="showPage('pg-clockin',this)">🧹 打卡清理</button>
-      <button onclick="showPage('pg-pw',this)">🔑 修改密碼</button>
-      <button onclick="adminLogout()" style="color:rgba(255,255,255,.35)">登出</button>`;
+      <button class="active" onclick="showPage('pg-admin',this)"><span class="tab-icon">📋</span>報班審核</button>
+      <button onclick="showPage('pg-emp',this)"><span class="tab-icon">👥</span>員工</button>
+      <button onclick="showPage('pg-attend',this)"><span class="tab-icon">📊</span>今日出勤</button>
+      <button onclick="showPage('pg-client',this)"><span class="tab-icon">🏭</span>客戶</button>
+      <button onclick="showPage('pg-export',this)"><span class="tab-icon">📤</span>匯出</button>
+      <button onclick="showPage('pg-clockin',this)"><span class="tab-icon">🧹</span>清理</button>
+      <button onclick="showPage('pg-pw',this)"><span class="tab-icon">🔑</span>密碼</button>
+      <button onclick="adminLogout()" style="color:rgba(255,255,255,.35)"><span class="tab-icon">🚪</span>登出</button>`;
     // 未登入時先顯示登入頁
     if (!unlocked.admin) {
       showPage('pg-admin');

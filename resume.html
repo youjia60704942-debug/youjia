@@ -298,30 +298,74 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--navy
   </div>
   <div style="font-size:13px;color:#888;margin-bottom:20px;">請上傳清晰照片，確保文字可辨識。每張照片限 5MB 以內。</div>
 
-  <div class="fld">
-    <label>身分證正面 <span class="req">*</span></label>
-    <div style="border:2px dashed #ddd;border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#fafafa;" onclick="document.getElementById('img-id-front').click()">
-      <input type="file" id="img-id-front" accept="image/*" style="display:none" onchange="previewImg(this,'prev-id-front')">
-      <img id="prev-id-front" style="max-width:100%;max-height:200px;display:none;border-radius:8px;margin-bottom:8px;">
-      <div id="hint-id-front" style="color:#aaa;font-size:14px;">📷 點此拍照或選擇圖片</div>
+  <style>
+    .upload-box{border:2px dashed #ddd6c4;border-radius:14px;padding:0;text-align:center;cursor:pointer;background:#fafaf8;transition:all .2s;overflow:hidden;margin-bottom:4px;}
+    .upload-box:hover{border-color:var(--gold);background:#fffdf5;}
+    .upload-box.done{border-color:#2a6e45;border-style:solid;background:#f0f9f4;}
+    .upload-placeholder{padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+    .upload-placeholder .up-icon{font-size:36px;}
+    .upload-placeholder .up-text{font-size:15px;font-weight:600;color:var(--navy);}
+    .upload-placeholder .up-hint{font-size:12px;color:var(--muted);}
+    .upload-preview{position:relative;padding:0;}
+    .upload-preview img{width:100%;max-height:220px;object-fit:cover;display:block;border-radius:12px;}
+    .upload-preview .up-badge{position:absolute;top:10px;right:10px;background:#2a6e45;color:#fff;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700;}
+    .upload-preview .up-change{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.55);color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;}
+    .upload-label{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+    .upload-label .up-status{font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;background:#f5f5f5;color:#888;}
+    .upload-label .up-status.ok{background:#e8f9ee;color:#2a6e45;}
+  </style>
+
+  <!-- 身分證正面 -->
+  <div class="fld" style="margin-bottom:20px;">
+    <div class="upload-label">身分證正面 <span class="req">*</span> <span class="up-status" id="status-front">未上傳</span></div>
+    <div class="upload-box" id="box-front" onclick="document.getElementById('img-id-front').click()">
+      <input type="file" id="img-id-front" accept="image/*" style="display:none" onchange="previewImg(this,'prev-id-front','box-front','status-front')">
+      <div class="upload-placeholder" id="hint-id-front">
+        <div class="up-icon">🪪</div>
+        <div class="up-text">點此上傳身分證正面</div>
+        <div class="up-hint">支援 JPG、PNG，限 5MB 以內</div>
+      </div>
+      <div class="upload-preview" id="prev-wrap-front" style="display:none;">
+        <img id="prev-id-front">
+        <div class="up-badge">✓ 已上傳</div>
+        <div class="up-change">點此更換</div>
+      </div>
     </div>
   </div>
 
-  <div class="fld">
-    <label>身分證反面 <span class="req">*</span></label>
-    <div style="border:2px dashed #ddd;border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#fafafa;" onclick="document.getElementById('img-id-back').click()">
-      <input type="file" id="img-id-back" accept="image/*" style="display:none" onchange="previewImg(this,'prev-id-back')">
-      <img id="prev-id-back" style="max-width:100%;max-height:200px;display:none;border-radius:8px;margin-bottom:8px;">
-      <div id="hint-id-back" style="color:#aaa;font-size:14px;">📷 點此拍照或選擇圖片</div>
+  <!-- 身分證反面 -->
+  <div class="fld" style="margin-bottom:20px;">
+    <div class="upload-label">身分證反面 <span class="req">*</span> <span class="up-status" id="status-back">未上傳</span></div>
+    <div class="upload-box" id="box-back" onclick="document.getElementById('img-id-back').click()">
+      <input type="file" id="img-id-back" accept="image/*" style="display:none" onchange="previewImg(this,'prev-id-back','box-back','status-back')">
+      <div class="upload-placeholder" id="hint-id-back">
+        <div class="up-icon">🪪</div>
+        <div class="up-text">點此上傳身分證反面</div>
+        <div class="up-hint">支援 JPG、PNG，限 5MB 以內</div>
+      </div>
+      <div class="upload-preview" id="prev-wrap-back" style="display:none;">
+        <img id="prev-id-back">
+        <div class="up-badge">✓ 已上傳</div>
+        <div class="up-change">點此更換</div>
+      </div>
     </div>
   </div>
 
-  <div class="fld">
-    <label>銀行存摺封面（含帳號頁）<span class="req">*</span></label>
-    <div style="border:2px dashed #ddd;border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#fafafa;" onclick="document.getElementById('img-bankbook').click()">
-      <input type="file" id="img-bankbook" accept="image/*" style="display:none" onchange="previewImg(this,'prev-bankbook')">
-      <img id="prev-bankbook" style="max-width:100%;max-height:200px;display:none;border-radius:8px;margin-bottom:8px;">
-      <div id="hint-bankbook" style="color:#aaa;font-size:14px;">📷 點此拍照或選擇圖片</div>
+  <!-- 銀行存摺 -->
+  <div class="fld" style="margin-bottom:20px;">
+    <div class="upload-label">銀行存摺封面（含帳號頁）<span class="req">*</span> <span class="up-status" id="status-bank">未上傳</span></div>
+    <div class="upload-box" id="box-bank" onclick="document.getElementById('img-bankbook').click()">
+      <input type="file" id="img-bankbook" accept="image/*" style="display:none" onchange="previewImg(this,'prev-bankbook','box-bank','status-bank')">
+      <div class="upload-placeholder" id="hint-bankbook">
+        <div class="up-icon">🏦</div>
+        <div class="up-text">點此上傳銀行存摺</div>
+        <div class="up-hint">請包含帳號頁，支援 JPG、PNG，限 5MB</div>
+      </div>
+      <div class="upload-preview" id="prev-wrap-bank" style="display:none;">
+        <img id="prev-bankbook">
+        <div class="up-badge">✓ 已上傳</div>
+        <div class="up-change">點此更換</div>
+      </div>
     </div>
   </div>
 
@@ -489,17 +533,29 @@ function buildPreview() {
   document.getElementById('pv').innerHTML = html;
 }
 
-function previewImg(input, previewId) {
+function previewImg(input, previewId, boxId, statusId) {
   const file = input.files[0];
   if (!file) return;
+  // 檢查檔案大小
+  if (file.size > 5 * 1024 * 1024) {
+    alert('檔案超過 5MB，請選擇較小的圖片');
+    input.value = '';
+    return;
+  }
   const hintId = previewId.replace('prev-','hint-');
-  const prev = document.getElementById(previewId);
-  const hint = document.getElementById(hintId);
+  const wrapId = previewId.replace('prev-','prev-wrap-');
+  const prev   = document.getElementById(previewId);
+  const hint   = document.getElementById(hintId);
+  const wrap   = document.getElementById(wrapId);
+  const box    = boxId   ? document.getElementById(boxId)   : null;
+  const status = statusId? document.getElementById(statusId): null;
   const reader = new FileReader();
   reader.onload = e => {
     prev.src = e.target.result;
-    prev.style.display = 'block';
-    hint.style.display = 'none';
+    if (hint) hint.style.display = 'none';
+    if (wrap) wrap.style.display = 'block';
+    if (box)  box.classList.add('done');
+    if (status) { status.textContent = '✓ 已上傳'; status.className = 'up-status ok'; }
   };
   reader.readAsDataURL(file);
 }

@@ -9,6 +9,10 @@
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
 
   :root {
+    --navy: #162035;
+    --navy2: #1e2d4a;
+    --gold: #c9a84c;
+    --gold-lt: #f0d98a;
     --green: #06C755;
     --green-dark: #05a847;
     --green-light: #e8f9ee;
@@ -26,7 +30,7 @@
 
   body {
     font-family: 'Noto Sans TC', sans-serif;
-    background: #f0f4f0;
+    background: #f2efe8;
     min-height: 100vh;
     color: var(--text);
     overflow-x: hidden;
@@ -34,7 +38,7 @@
 
   /* Header */
   .header {
-    background: var(--green);
+    background: var(--navy);
     padding: 48px 24px 32px;
     text-align: center;
     position: relative;
@@ -58,7 +62,7 @@
   }
   .header-logo {
     font-size: 13px;
-    color: rgba(255,255,255,0.8);
+    color: var(--gold-lt);
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-bottom: 8px;
@@ -173,8 +177,8 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
   .shift-btn.active {
-    border-color: var(--green);
-    background: var(--green-light);
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.12);
   }
   .shift-btn-icon { font-size: 24px; margin-bottom: 6px; }
   .shift-btn-name { font-size: 15px; font-weight: 700; color: var(--text); }
@@ -326,8 +330,8 @@
     transition: all 0.2s;
   }
   .survey-btn.selected-yes {
-    border-color: var(--green);
-    background: var(--green-light);
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.12);
     color: var(--green);
   }
   .survey-btn.selected-no {
