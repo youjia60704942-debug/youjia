@@ -1,0 +1,25 @@
+{
+  "name": "優佳人力資源",
+  "short_name": "優佳人力",
+  "description": "優佳人力資源管理後台",
+  "start_url": "/youjia/index.html",
+  "display": "standalone",
+  "background_color": "#162035",
+  "theme_color": "#162035",
+  "orientation": "portrait",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
