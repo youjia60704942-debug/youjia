@@ -496,6 +496,19 @@ tr:hover td{background:rgba(201,168,76,.04);}
     </div>
   </div>
 
+  <!-- 舊打卡清理 -->
+  <div id="pg-clockin" class="page">
+    <div class="card">
+      <div class="card-title">🧹 舊打卡記錄清理</div>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:16px;">
+        列出超過2天仍未下班打卡的記錄（員工上班打卡後忘記打下班卡）。<br>
+        確認後可逐筆刪除，刪除前請先至「每日派工」確認是否需要補登工時。
+      </p>
+      <button class="btn btn-primary" onclick="loadOldClockins()" style="margin-bottom:18px;">🔍 查詢舊打卡記錄</button>
+      <div id="old-clockin-result"></div>
+    </div>
+  </div>
+
   <!-- 修改密碼 -->
   <div id="pg-pw" class="page">
     <div class="card" style="max-width:420px;margin:0 auto;">
@@ -694,6 +707,7 @@ function enterRole(role) {
       <button onclick="showPage('pg-attend',this)">📋 今日出勤</button>
       <button onclick="showPage('pg-client',this)">🏭 客戶管理</button>
       <button onclick="showPage('pg-export',this)">匯出名單</button>
+      <button onclick="showPage('pg-clockin',this)">🧹 打卡清理</button>
       <button onclick="showPage('pg-pw',this)">🔑 修改密碼</button>
       <button onclick="adminLogout()" style="color:rgba(255,255,255,.35)">登出</button>`;
     // 未登入時先顯示登入頁
@@ -733,7 +747,7 @@ function showPage(id, btn) {
   document.getElementById(id).classList.add('active');
   if (btn) { document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
   // 管理師頁面若未登入則跳回登入頁
-  if (['pg-emp','pg-export','pg-pw','pg-resume','pg-client','pg-attend'].includes(id) && !unlocked.admin) {
+  if (['pg-emp','pg-export','pg-pw','pg-resume','pg-client','pg-attend','pg-clockin'].includes(id) && !unlocked.admin) {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.getElementById('pg-admin').classList.add('active');
     toast('⚠ 請先登入管理師後台', true); return;
@@ -1868,6 +1882,68 @@ async function editResumeField(docId, field, currentVal) {
     allEmployees = await dbGetAll('employees').catch(()=>allEmployees);
     toast('✓ 工號已更新！');
   } catch(e) { toast('❌ 更新失敗', true); }
+}
+
+// ── 舊打卡記錄清理 ──────────────────────────────────────────
+async function loadOldClockins() {
+  const resultDiv = document.getElementById('old-clockin-result');
+  resultDiv.innerHTML = '<p style="color:var(--muted);font-size:14px;">查詢中...</p>';
+  try {
+    const res = await fetch(`${GAS_URL}?action=list_old_clockins`);
+    const data = await res.json();
+    if (!data.success) { resultDiv.innerHTML = `<p style="color:var(--danger);">❌ 查詢失敗：${data.error}</p>`; return; }
+    if (!data.records || data.records.length === 0) {
+      resultDiv.innerHTML = '<p style="color:var(--success);font-size:14px;">✅ 沒有超過2天的舊打卡記錄，一切正常！</p>';
+      return;
+    }
+    let html = `<p style="color:var(--danger);font-weight:700;margin-bottom:12px;">⚠️ 發現 ${data.records.length} 筆舊記錄，請確認後再刪除：</p>`;
+    html += `<div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>員工姓名</th><th>工號</th><th>班別</th><th>廠商</th><th>上班打卡時間</th><th>已過天數</th><th>操作</th>
+      </tr></thead><tbody>`;
+    data.records.forEach((r, i) => {
+      html += `<tr>
+        <td><strong>${r.name || '未知'}</strong></td>
+        <td>${r.empid || '—'}</td>
+        <td>${r.shift || '—'}</td>
+        <td>${r.client || '—'}</td>
+        <td>${r.clockIn}</td>
+        <td style="color:var(--danger);font-weight:700;">${r.daysAgo} 天前</td>
+        <td>
+          <button class="btn btn-sm" style="background:var(--danger);color:#fff;padding:5px 12px;font-size:12px;"
+            onclick="deleteOldClockin('${r.key}', '${r.name || r.userId}', this)">🗑 刪除</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    html += `<p style="font-size:12px;color:var(--muted);margin-top:12px;">⚠️ 刪除前請先確認「每日派工」Sheets 是否需要補登該員工工時！</p>`;
+    resultDiv.innerHTML = html;
+  } catch(e) {
+    resultDiv.innerHTML = `<p style="color:var(--danger);">❌ 查詢失敗：${e.message}</p>`;
+  }
+}
+
+async function deleteOldClockin(key, name, btn) {
+  if (!confirm(`確定要刪除「${name}」的舊打卡記錄？\n\n請確認已確認是否需要補登工時！`)) return;
+  btn.disabled = true;
+  btn.textContent = '刪除中...';
+  try {
+    const res = await fetch(`${GAS_URL}?action=delete_clockin_key&key=${encodeURIComponent(key)}`);
+    const data = await res.json();
+    if (data.success) {
+      btn.closest('tr').style.opacity = '0.4';
+      btn.textContent = '✓ 已刪除';
+      toast(`✓ 已刪除 ${name} 的舊打卡記錄`);
+    } else {
+      btn.disabled = false;
+      btn.textContent = '🗑 刪除';
+      toast(`❌ 刪除失敗：${data.error}`, true);
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '🗑 刪除';
+    toast('❌ 刪除失敗', true);
+  }
 }
 </script>
 </body>
