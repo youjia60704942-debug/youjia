@@ -129,7 +129,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
 .success-circle{width:68px;height:68px;background:#e8f5ee;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:30px;}
 .success-title{font-size:19px;font-weight:700;color:var(--success);margin-bottom:7px;}
 .success-sub{color:var(--muted);font-size:14px;line-height:1.8;}
-#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:var(--gold-lt);padding:11px 24px;border-radius:24px;font-size:13px;font-weight:600;box-shadow:0 4px 24px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;pointer-events:none;}
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--navy);color:var(--gold-lt);padding:11px 24px;border-radius:24px;font-size:13px;font-weight:600;box-shadow:0 4px 24px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:9999;pointer-events:none;white-space:nowrap;}
 #toast.show{transform:translateX(-50%) translateY(0);}
 .modal-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;}
 .modal-bd.open{display:flex;}
@@ -204,7 +204,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
   /* 頁面底部留白，避免被 tab bar 蓋住 */
   .page{padding-bottom:80px;}
   /* Toast 移到 tab bar 上方，縮短停留時間 */
-  #toast{bottom:80px !important;font-size:12px;padding:9px 18px;z-index:9999;}
+  #toast{bottom:72px !important;font-size:12px;padding:9px 18px;z-index:9999;white-space:nowrap;}
   .menu-toggle{display:none !important;}
   .h-badge{display:none;}
   header{padding:0 16px;height:56px;}
@@ -719,6 +719,10 @@ function toast(msg, err) {
   void t.offsetWidth;
   t.textContent = msg;
   t.style.background = err ? 'var(--danger)' : 'var(--navy)';
+  // 動態調整位置：landing 頁沒有 tab bar，用較低位置
+  const inApp = document.getElementById('app') && document.getElementById('app').style.display !== 'none';
+  const isMobile = window.innerWidth <= 768;
+  t.style.bottom = (isMobile && inApp) ? '72px' : '26px';
   t.classList.add('show');
   window._toastTimer = setTimeout(() => { t.classList.remove('show'); }, 2500);
 }
@@ -768,10 +772,9 @@ function adminLogout() {
   document.getElementById('admin-lock').style.display = 'block';
   document.getElementById('admin-panel').style.display = 'none';
   document.getElementById('admin-pw').value = '';
-  // 清除 Toast
   clearTimeout(window._toastTimer);
   const t = document.getElementById('toast');
-  if (t) t.classList.remove('show');
+  if (t) { t.classList.remove('show'); t.style.bottom = '26px'; }
   goBack();
 }
 function toggleMenu() {
