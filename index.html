@@ -204,7 +204,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
   /* 頁面底部留白，避免被 tab bar 蓋住 */
   .page{padding-bottom:80px;}
   /* Toast 移到 tab bar 上方，縮短停留時間 */
-  #toast{bottom:70px;font-size:12px;padding:9px 18px;}
+  #toast{bottom:80px !important;font-size:12px;padding:9px 18px;z-index:9999;}
   .menu-toggle{display:none !important;}
   .h-badge{display:none;}
   header{padding:0 16px;height:56px;}
@@ -714,12 +714,13 @@ function fmtDateShort(ds) {
 }
 function toast(msg, err) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.style.background = err ? 'var(--danger)' : 'var(--navy)';
-  t.classList.remove('show');
-  void t.offsetWidth; // 強制 reflow，確保動畫重置
-  t.classList.add('show');
   clearTimeout(window._toastTimer);
-  window._toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  t.classList.remove('show');
+  void t.offsetWidth;
+  t.textContent = msg;
+  t.style.background = err ? 'var(--danger)' : 'var(--navy)';
+  t.classList.add('show');
+  window._toastTimer = setTimeout(() => { t.classList.remove('show'); }, 2500);
 }
 function setSS(id, state, msg) {
   const el = document.getElementById(id); if (!el) return;
@@ -767,6 +768,10 @@ function adminLogout() {
   document.getElementById('admin-lock').style.display = 'block';
   document.getElementById('admin-panel').style.display = 'none';
   document.getElementById('admin-pw').value = '';
+  // 清除 Toast
+  clearTimeout(window._toastTimer);
+  const t = document.getElementById('toast');
+  if (t) t.classList.remove('show');
   goBack();
 }
 function toggleMenu() {
