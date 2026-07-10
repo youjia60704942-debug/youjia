@@ -445,8 +445,8 @@ tr:hover td{background:rgba(201,168,76,.04);}
           <div class="form-group"><label>日班結束</label><input type="text" id="c-dayEnd" placeholder="" value="16:30"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>夜班開始</label><input type="text" id="c-nightStart" placeholder="" value="20:30"></div>
-          <div class="form-group"><label>夜班結束</label><input type="text" id="c-nightEnd" placeholder="" value="05:00"></div>
+          <div class="form-group"><label>夜班開始</label><input type="text" id="c-nightStart" placeholder="如：20:30"></div>
+          <div class="form-group"><label>夜班結束</label><input type="text" id="c-nightEnd" placeholder="如：05:00"></div>
         </div>
         <div class="form-group">
           <label>客戶注意事項（員工審核通過時收到）</label>
@@ -1101,14 +1101,14 @@ async function saveClient() {
     ['c-name','c-pw','c-lat','c-lng','c-note','c-dayRate','c-nightRate','c-dayOt134','c-dayOt167','c-nightOt134','c-nightOt167','c-notice'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('c-radius').value = '100';
     document.getElementById('c-dayStart').value = '08:00';
-    document.getElementById('c-nightStart').value = '20:30';
+    document.getElementById('c-nightStart').value = '';
   } catch(e) { setSS('client-sync', 'err', '失敗'); toast('❌ 儲存失敗：' + e.message, true); }
 }
 
 function openRatesModal(i) {
   const c = allClients[i];
   if (!c) return;
-  editClientRates(c.name, c.dayRate||'', c.nightRate||'', c.dayOt134Base||'', c.dayOt167Base||'', c.nightOt134Base||'', c.nightOt167Base||'', c.dayStart||'08:00', c.dayEnd||'16:30', c.nightStart||'20:30', c.nightEnd||'05:00', c.notice||'', c.restHours||'0.5');
+  editClientRates(c.name, c.dayRate||'', c.nightRate||'', c.dayOt134Base||'', c.dayOt167Base||'', c.nightOt134Base||'', c.nightOt167Base||'', c.dayStart||'', c.dayEnd||'', c.nightStart||'', c.nightEnd||'', c.notice||'', c.restHours||'0.5');
 }
 
 async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, de, ns, ne, notice, restHours) {
