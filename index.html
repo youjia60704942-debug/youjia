@@ -327,6 +327,7 @@ tr:hover td{background:rgba(201,168,76,.04);}
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- 管理後台 -->
@@ -1106,10 +1107,10 @@ async function saveClient() {
 function openRatesModal(i) {
   const c = allClients[i];
   if (!c) return;
-  editClientRates(c.name, c.dayRate||'', c.nightRate||'', c.dayOt134Base||'', c.dayOt167Base||'', c.nightOt134Base||'', c.nightOt167Base||'', c.dayStart||'08:00', c.dayEnd||'16:30', c.nightStart||'20:30', c.nightEnd||'05:00', c.notice||'');
+  editClientRates(c.name, c.dayRate||'', c.nightRate||'', c.dayOt134Base||'', c.dayOt167Base||'', c.nightOt134Base||'', c.nightOt167Base||'', c.dayStart||'08:00', c.dayEnd||'16:30', c.nightStart||'20:30', c.nightEnd||'05:00', c.notice||'', c.restHours||'0.5');
 }
 
-async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, de, ns, ne, notice) {
+async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, de, ns, ne, notice, restHours) {
   const div = document.createElement('div');
   div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
   div.innerHTML=`
@@ -1138,6 +1139,10 @@ async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, de, ns,
           <div><label style="font-size:12px;color:#888;">夜班開始</label><input id="cr-ns" type="text" value="${ns||''}" placeholder="" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
           <div><label style="font-size:12px;color:#888;">夜班結束</label><input id="cr-ne" type="text" value="${ne||''}" placeholder="" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
         </div>
+        <div style="margin-top:10px;">
+          <label style="font-size:12px;color:#888;font-weight:600;">休息時數（小時，自動從正常工時扣除）</label>
+          <input id="cr-rest" type="number" step="0.5" min="0" max="2" value="${restHours||0.5}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px;margin-top:4px;">
+        </div>
       </div>
       <div style="padding:0 24px 10px;">
           <label style="font-size:12px;color:#888;display:block;margin-bottom:4px;">注意事項（員工收到通知時顯示）</label>
@@ -1162,6 +1167,7 @@ async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, de, ns,
       dayEnd:         div.querySelector('#cr-de').value || '16:30',
       nightStart:     div.querySelector('#cr-ns').value || '20:30',
       nightEnd:       div.querySelector('#cr-ne').value || '05:00',
+      restHours:      div.querySelector('#cr-rest').value || '0.5',
       notice:         div.querySelector('#cr-notice').value.trim()
     };
     div.remove();
@@ -2006,6 +2012,90 @@ async function deleteOldClockin(key, name, btn) {
         .catch(err => console.log('SW 註冊失敗：', err));
     });
   }
+
+// ── 員工班表查詢 ──────────────────────────────────────────
+async function queryMySchedule() {
+  const input = document.getElementById('my-schedule-input').value.trim();
+  const resultDiv = document.getElementById('my-schedule-result');
+  if (!input) { toast('⚠ 請輸入工號或姓名', true); return; }
+
+  resultDiv.innerHTML = '<p style="color:var(--muted);font-size:13px;">查詢中...</p>';
+
+  try {
+    // 從 Firestore 取得所有報班記錄
+    const records = await dbGetAll('shifts');
+
+    // 比對工號或姓名（不分大小寫）
+    const keyword = input.toUpperCase();
+    const matched = records.filter(r => {
+      const empid = (r.empid || '').toUpperCase();
+      const name  = (r.name  || '');
+      return empid === keyword || name === input || name.includes(input);
+    });
+
+    if (matched.length === 0) {
+      resultDiv.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">查無記錄，請確認工號或姓名是否正確。</p>';
+      return;
+    }
+
+    // 依日期降冪排序
+    matched.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    // 統計
+    const total    = matched.length;
+    const approved = matched.filter(r => r.status === 'approved').length;
+    const pending  = matched.filter(r => r.status === 'pending').length;
+    const rejected = matched.filter(r => r.status === 'rejected').length;
+
+    const statusBadge = (s) => {
+      if (s === 'approved') return '<span class="badge-approved">✓ 已通過</span>';
+      if (s === 'rejected') return '<span style="display:inline-block;background:#ffeaea;color:#c0392b;border:1px solid #f5b8b8;border-radius:5px;padding:3px 10px;font-size:12px;font-weight:700;">✗ 已退回</span>';
+      return '<span class="badge-pending">⏳ 待審核</span>';
+    };
+
+    let html = `
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:70px;background:var(--surface);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:var(--text);">${total}</div>
+          <div style="font-size:11px;color:var(--muted);">總報班</div>
+        </div>
+        <div style="flex:1;min-width:70px;background:#e8f5ee;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:var(--success);">${approved}</div>
+          <div style="font-size:11px;color:var(--muted);">已通過</div>
+        </div>
+        <div style="flex:1;min-width:70px;background:#fff8e0;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:#8a6a00;">${pending}</div>
+          <div style="font-size:11px;color:var(--muted);">待審核</div>
+        </div>
+        <div style="flex:1;min-width:70px;background:#ffeaea;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:#c0392b;">${rejected}</div>
+          <div style="font-size:11px;color:var(--muted);">已退回</div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>日期</th><th>廠商</th><th>班別</th><th>備註</th><th>狀態</th></tr></thead>
+          <tbody>`;
+
+    matched.forEach(r => {
+      const dateStr = (r.date || '').replace(/\//g, '/');
+      html += `<tr>
+        <td style="white-space:nowrap;">${dateStr}</td>
+        <td>${r.client || '—'}</td>
+        <td><span style="background:${r.shift==='日班'?'#fff8e0':'#e8eaf6'};color:${r.shift==='日班'?'#8a6a00':'#3949ab'};border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;">${r.shift || '—'}</span></td>
+        <td style="color:var(--muted);font-size:12px;">${r.note || '—'}</td>
+        <td>${statusBadge(r.status)}</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    resultDiv.innerHTML = html;
+
+  } catch(e) {
+    resultDiv.innerHTML = `<p style="color:var(--danger);">❌ 查詢失敗：${e.message}</p>`;
+  }
+}
+
 </script>
 </body>
 </html>
