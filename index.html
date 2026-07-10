@@ -1087,12 +1087,13 @@ async function saveClient() {
   const dayOt167Base  = document.getElementById('c-dayOt167').value.trim();
   const nightOt134Base= document.getElementById('c-nightOt134').value.trim();
   const nightOt167Base= document.getElementById('c-nightOt167').value.trim();
-  const dayStart      = document.getElementById('c-dayStart').value.trim() || '08:00';
-  const dayEnd        = document.getElementById('c-dayEnd').value.trim() || '16:30';
-  const nightStart    = document.getElementById('c-nightStart').value.trim() || '20:30';
-  const nightEnd      = document.getElementById('c-nightEnd').value.trim() || '05:00';
-  const notice = document.getElementById('c-notice').value.trim();
-  const res = await gasPost({ action: 'add_client', name, pw, lat, lng, radius, note, dayRate, nightRate, dayOt134Base, dayOt167Base, nightOt134Base, nightOt167Base, dayStart, dayEnd, nightStart, nightEnd, notice });
+  const dayStart      = document.getElementById('c-dayStart').value.trim();
+  const dayEnd        = document.getElementById('c-dayEnd').value.trim();
+  const nightStart    = document.getElementById('c-nightStart').value.trim();
+  const nightEnd      = document.getElementById('c-nightEnd').value.trim();
+  const notice        = document.getElementById('c-notice').value.trim();
+  const restHours     = '0.5';
+  const res = await gasPost({ action: 'add_client', name, pw, lat, lng, radius, note, dayRate, nightRate, dayOt134Base, dayOt167Base, nightOt134Base, nightOt167Base, dayStart, dayEnd, nightStart, nightEnd, notice, restHours });
     if (!res.success) throw new Error(res.error);
     allClients = res.clients || [];
     renderClientTable(); refreshClientSelects();
@@ -1163,10 +1164,10 @@ async function editClientRates(name, dr, nr, d134, d167, n134, n167, ds, de, ns,
       dayOt167Base:   div.querySelector('#cr-d167').value,
       nightOt134Base: div.querySelector('#cr-n134').value,
       nightOt167Base: div.querySelector('#cr-n167').value,
-      dayStart:       div.querySelector('#cr-ds').value || '08:00',
-      dayEnd:         div.querySelector('#cr-de').value || '16:30',
-      nightStart:     div.querySelector('#cr-ns').value || '20:30',
-      nightEnd:       div.querySelector('#cr-ne').value || '05:00',
+      dayStart:       div.querySelector('#cr-ds').value,
+      dayEnd:         div.querySelector('#cr-de').value,
+      nightStart:     div.querySelector('#cr-ns').value,
+      nightEnd:       div.querySelector('#cr-ne').value,
       restHours:      div.querySelector('#cr-rest').value || '0.5',
       notice:         div.querySelector('#cr-notice').value.trim()
     };
